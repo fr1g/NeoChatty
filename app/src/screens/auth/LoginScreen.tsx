@@ -1,0 +1,213 @@
+import React, { useState } from 'react';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView, } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
+import { useAuth } from '../../context/AuthContext';
+const LoginScreen: React.FC = () => {
+    const navigation = useNavigation<any>();
+    const { login } = useAuth();
+    const [username, setUsername] = useState('');
+    const [password, setPassword] = useState('');
+    const [loading, setLoading] = useState(false);
+    const handleLogin = async () => {
+        if (!username.trim() || !password.trim()) {
+            Alert.alert('Notice', 'Please enter a username and password');
+            return;
+        }
+        setLoading(true);
+        try {
+            await login(username.trim(), password);
+        }
+        catch (e: any) {
+            const msg = e?.response?.data?.error?.message || e?.message || 'Please check your username and password';
+            Alert.alert('Sign In Failed', msg);
+        }
+        finally {
+            setLoading(false);
+        }
+    };
+    return (<View style={styles.container}>
+
+        <View style={styles.topBackground}>
+            <View style={styles.decorationCircle1} />
+            <View style={styles.decorationCircle2} />
+        </View>
+
+        <KeyboardAvoidingView style={styles.keyboardView} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+            <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+                <View style={styles.header}>
+                    <View style={styles.logoContainer}>
+                        <Ionicons name="chatbubbles" size={48} color="#fff" />
+                    </View>
+                    <Text style={styles.title}>Welcome back</Text>
+                    <Text style={styles.subtitle}>Sign in to Chatty and continue your conversations</Text>
+                </View>
+
+                <View style={styles.card}>
+                    <View style={styles.inputContainer}>
+                        <Ionicons name="person-outline" size={20} color="#9CA3AF" style={styles.inputIcon} />
+                        <TextInput style={styles.input} placeholder="Username" placeholderTextColor="#9CA3AF" autoCapitalize="none" autoCorrect={false} value={username} onChangeText={setUsername} />
+                    </View>
+
+                    <View style={styles.inputContainer}>
+                        <Ionicons name="lock-closed-outline" size={20} color="#9CA3AF" style={styles.inputIcon} />
+                        <TextInput style={styles.input} placeholder="Password" placeholderTextColor="#9CA3AF" secureTextEntry value={password} onChangeText={setPassword} />
+                    </View>
+
+                    <TouchableOpacity style={[styles.button, loading && styles.buttonDisabled]} onPress={handleLogin} disabled={loading} activeOpacity={0.8}>
+                        {loading ? (<ActivityIndicator color="#fff" />) : (<Text style={styles.buttonText}>Sign In</Text>)}
+                    </TouchableOpacity>
+                </View>
+
+                <TouchableOpacity style={styles.linkRow} onPress={() => navigation.navigate('Register')} activeOpacity={0.6}>
+                    <Text style={styles.linkText}>No account yet?</Text>
+                    <Text style={styles.linkTextBold}>Create one now</Text>
+                </TouchableOpacity>
+            </ScrollView>
+        </KeyboardAvoidingView>
+    </View>);
+};
+const styles = StyleSheet.create({
+    container: {
+        flex: 1,
+        backgroundColor: '#F3F4F6',
+    },
+    topBackground: {
+        position: 'absolute',
+        top: 0,
+        width: '100%',
+        height: 320,
+        backgroundColor: '#1277d6',
+        borderBottomLeftRadius: 40,
+        borderBottomRightRadius: 40,
+        overflow: 'hidden',
+    },
+    decorationCircle1: {
+        position: 'absolute',
+        top: -40,
+        right: -20,
+        width: 140,
+        height: 140,
+        borderRadius: 70,
+        backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    },
+    decorationCircle2: {
+        position: 'absolute',
+        top: 60,
+        left: -30,
+        width: 200,
+        height: 200,
+        borderRadius: 100,
+        backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    },
+    keyboardView: {
+        flex: 1,
+    },
+    scroll: {
+        flexGrow: 1,
+        justifyContent: 'flex-start',
+        paddingHorizontal: 24,
+        paddingTop: Platform.select({
+            ios: 56,
+            android: 32,
+            default: 40,
+        }),
+        paddingBottom: 40,
+    },
+    header: {
+        alignItems: 'center',
+        marginBottom: 24,
+    },
+    logoContainer: {
+        width: 80,
+        height: 80,
+        borderRadius: 24,
+        backgroundColor: 'rgba(255,255,255,0.2)',
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginBottom: 20,
+        transform: [{ rotate: '-10deg' }],
+    },
+    title: {
+        fontSize: 32,
+        fontWeight: '800',
+        color: '#ffffff',
+        marginBottom: 8,
+        letterSpacing: 1,
+    },
+    subtitle: {
+        fontSize: 16,
+        color: 'rgba(255,255,255,0.85)',
+        fontWeight: '500',
+    },
+    card: {
+        backgroundColor: '#ffffff',
+        borderRadius: 24,
+        padding: 24,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 10 },
+        shadowOpacity: 0.1,
+        shadowRadius: 20,
+        elevation: 8,
+    },
+    inputContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#F9FAFB',
+        borderRadius: 16,
+        borderWidth: 1,
+        borderColor: '#E5E7EB',
+        height: 56,
+        marginBottom: 16,
+        paddingHorizontal: 16,
+    },
+    inputIcon: {
+        marginRight: 12,
+    },
+    input: {
+        flex: 1,
+        height: '100%',
+        fontSize: 16,
+        color: '#1F2937',
+    },
+    button: {
+        height: 56,
+        backgroundColor: '#1277d6',
+        borderRadius: 16,
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginTop: 12,
+        shadowColor: '#1277d6',
+        shadowOffset: { width: 0, height: 6 },
+        shadowOpacity: 0.3,
+        shadowRadius: 10,
+        elevation: 6,
+    },
+    buttonDisabled: {
+        opacity: 0.6,
+        elevation: 0,
+        shadowOpacity: 0,
+    },
+    buttonText: {
+        color: '#ffffff',
+        fontSize: 18,
+        fontWeight: '700',
+        letterSpacing: 1,
+    },
+    linkRow: {
+        flexDirection: 'row',
+        justifyContent: 'center',
+        marginTop: 32,
+    },
+    linkText: {
+        color: '#6B7280',
+        fontSize: 15,
+    },
+    linkTextBold: {
+        color: '#1277d6',
+        fontSize: 15,
+        fontWeight: '700',
+        marginLeft: 4,
+    },
+});
+export default LoginScreen;

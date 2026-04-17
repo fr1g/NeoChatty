@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="DataSourcePerFileMappings">
+    <file url="file://$APPLICATION_CONFIG_DIR$/consoles/db/bb57323b-2b95-461d-b354-4635d2093f6b/console.sql" value="bb57323b-2b95-461d-b354-4635d2093f6b" />
+    <file url="file://$APPLICATION_CONFIG_DIR$/consoles/db/bb57323b-2b95-461d-b354-4635d2093f6b/console_1.sql" value="bb57323b-2b95-461d-b354-4635d2093f6b" />
+    <file url="file://$PROJECT_DIR$/chat_app.sql" value="bb57323b-2b95-461d-b354-4635d2093f6b" />
+  </component>
+</project>

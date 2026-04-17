@@ -1,0 +1,5 @@
+=== not for agent ===
+this directory is raw copied from repo:
+https://github.com/fr1g/webchatty-ui
+already arched.
+It Always Follow the Parent License

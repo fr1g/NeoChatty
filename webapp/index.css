@@ -1,0 +1,141 @@
+@import "tailwindcss";
+@custom-variant dark (&:where(.dark, .dark *));
+
+* {
+    @apply transition select-none dark:text-slate-50 text-slate-800;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(0, 29, 63, 0.671) transparent ;
+}
+
+*:where(.dark, .dark *) {
+    scrollbar-color: rgba(238, 246, 255, 0.582) transparent ;
+}
+
+#headlessui-portal-root{
+    @apply fixed!
+}
+
+.block-shadow {
+    @apply shadow sm:shadow-md shadow-slate-500/30 dark:shadow-slate-800/35;
+}
+
+.interactive {
+    @apply bg-slate-100/50 dark:bg-slate-200/15 hover:bg-slate-300/60 active:bg-slate-300/70 focus:bg-slate-300/50 focus:shadow-xl;
+}
+
+@keyframes navshow {
+    from {
+        width: 0;
+        opacity: 0;
+    }
+
+    to {
+        width: 100%;
+        opacity: 1;
+    }
+}
+
+@keyframes navhide {
+    from {
+        width: 100%;
+        opacity: 1;
+    }
+
+    to {
+        width: 0;
+        opacity: 0;
+        display: none;
+    }
+}
+
+@keyframes fade-in {
+    0% {
+        opacity: 0;
+    }
+
+    35% {
+        opacity: 0;
+    }
+
+    100% {
+        opacity: 1;
+    }
+}
+
+.fadein {
+    animation: fade-in 0.5s forwards;
+}
+
+@keyframes fade-au {
+    0% {
+        opacity: 1;
+    }
+
+    35% {
+        opacity: 0;
+    }
+
+    100% {
+        opacity: 0;
+        display: none;
+    }
+}
+
+.fadeau {
+    animation: fade-au 0.5s forwards;
+}
+
+@media (width < 40rem) {
+    .nav-hide {
+        animation: navhide 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards !important;
+    }
+
+    .nav-show {
+        animation: navshow 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards !important;
+    }
+
+    .nav-show>* {
+        animation: fade-in 0.32s forwards;
+    }
+
+    .nav-hide>* {
+        animation: fade-au 0.32s forwards;
+    }
+}
+
+.border-button {
+    @apply border-slate-500/60 border-2 opacity-85 hover:opacity-100 cursor-pointer active:opacity-65  p-1 rounded-lg;
+    pointer-events: visible
+}
+
+.real-nowrap {
+    @apply text-nowrap text-ellipsis overflow-hidden;
+}
+
+.use-tight-list:first-child {
+    @apply rounded-t-lg overflow-hidden;
+}
+
+.use-tight-list:last-child {
+    @apply rounded-b-lg overflow-hidden;
+}
+
+.use-tight-list>* {
+    @apply rounded-lg! overflow-hidden;
+}
+
+.use-tight-list:hover .tight-item {
+    @apply rounded-none! overflow-hidden;
+}
+
+.tight-item:hover {
+    @apply rounded-lg!;
+}
+
+.use-tight-list {
+    @apply bg-slate-100/15 dark:bg-slate-200/15
+}
+
+table.comparasive tbody tr td:last-child {
+    @apply text-right font-semibold
+}
