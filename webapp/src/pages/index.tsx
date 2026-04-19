@@ -55,7 +55,7 @@ export default function Index() {
     const latestConversation = useMemo(() => state.list[0], [state.list]);
     const displayName = user?.display_name || user?.username || 'User';
     return (<div className="h-full overflow-y-auto">
-        <div className="rounded-[2rem] bg-gradient-to-br from-[#1277d6] via-[#0ab15a] to-[#065f46] text-white p-6 shadow-xl">
+        <div className="rounded-4xl bg-linear-to-br from-[#1277d6] via-[#0ab15a] to-[#065f46] text-white p-6 shadow-xl">
             <p className="text-sm/5 text-white/80">Welcome back</p>
             <h1 className="text-3xl font-bold mt-2">{displayName}</h1>
             <p className="text-sm text-white/85 mt-3 max-w-xl">

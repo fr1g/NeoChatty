@@ -24,6 +24,7 @@ import Blacklist from './pages/settings/Blacklist';
 import SettingsHome from './pages/settings/Home';
 import * as socketService from './services/socket';
 import About from './pages/settings/About';
+
 export interface ReusableFuncsDef {
     setChat: Function;
     setUserView: Function;
@@ -33,12 +34,15 @@ export interface ReusableFuncsDef {
     themeMgr: ThemeHelper;
     modalUpdate: Function;
 }
+
 export interface ModalControl {
     info: DialogInfo;
     showing: boolean;
     customChildren?: ReactNode;
 }
+
 export const ReusableFuncs = createContext<ReusableFuncsDef | null>(null);
+
 function resolveNavFromPath(pathname: string): "recents" | "contacts" | "settings" {
     if (pathname.startsWith('/settings')) {
         return 'settings';
@@ -48,6 +52,7 @@ function resolveNavFromPath(pathname: string): "recents" | "contacts" | "setting
     }
     return 'recents';
 }
+
 function Badge({ count }: {
     count: number;
 }) {
@@ -58,6 +63,7 @@ function Badge({ count }: {
         {count > 99 ? '99+' : count}
     </span>);
 }
+
 function AppScope({ side, setSide, mgr }: {
     side: "right" | "left";
     setSide: Function;
@@ -286,3 +292,12 @@ function AuthGate({ side, setSide, mgr }: {
     </BrowserRouter>);
 }
 createRoot(document.getElementById('root')!).render(<Layout />);
+// todo
+// replace using sdk
+// here to create a client, find the localStorage if here's a SET endpoint
+// if NO, use DEFAULT.
+// expose by using export
+
+// const CCC = 
+// const CC = ..client
+// export .....each parts.

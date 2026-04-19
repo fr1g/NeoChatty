@@ -10,6 +10,7 @@ const client = axios.create({
     baseURL: BASE_URL,
     timeout: 15000,
 });
+// SecureStore.
 function isFormDataPayload(data: unknown): boolean {
     return typeof FormData !== 'undefined' && data instanceof FormData;
 }

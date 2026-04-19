@@ -155,7 +155,8 @@ export const blocks = {
         return client.delete<ApiResponse<null>>(`/blocks/${userId}`);
     },
 };
-export const files = {
+export const files = { // files {...filesx} and replace uploadFile, replace others and all inherit from main.ts(this app) the exported
+    // or, move this to main.ts and expose all there.
     uploadFile(file: UploadFilePayload, onUploadProgress?: (progress: number) => void) {
         return uploadWithNativeTask(file, onUploadProgress);
     },
