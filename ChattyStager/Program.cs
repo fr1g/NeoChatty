@@ -1,6 +1,9 @@
 using ChattyStager.Components;
+using TailwindBlazor;
 
 var builder = WebApplication.CreateBuilder(args);
+
+builder.UseTailwind();
 
 // Add services to the container.
 builder.Services.AddRazorComponents()

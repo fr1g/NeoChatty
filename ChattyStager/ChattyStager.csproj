@@ -7,4 +7,15 @@
         <BlazorDisableThrowNavigationException>true</BlazorDisableThrowNavigationException>
     </PropertyGroup>
 
+    <ItemGroup>
+      <PackageReference Include="TailwindBlazor" Version="0.2.0" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <Content Update="Styles\app.css">
+        <ExcludeFromSingleFile>true</ExcludeFromSingleFile>
+        <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+      </Content>
+    </ItemGroup>
+
 </Project>
