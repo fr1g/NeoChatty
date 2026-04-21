@@ -42,3 +42,6 @@ yarn-error.*
 
 # local files
 /_archive
+
+# upload local test files
+/uploads
