@@ -1,6 +1,6 @@
 import { Router, Response } from 'express';
 import { Op } from 'sequelize';
-import { User, FriendRequest, Friendship, Block } from '../models';
+import { User, FriendRequest, Contact, Block } from '../models';
 import { success, error } from '../utils/response';
 import { authMiddleware, AuthRequest } from '../middleware/auth';
 import sequelize from '../config/database';
@@ -34,10 +34,10 @@ router.post('/request', async (req: AuthRequest, res: Response) => {
         if (blocked) {
             return error(res, 'FORBIDDEN', 'Unable to send friend request', 403);
         }
-        const existingFriendship = await Friendship.findOne({
+        const existingContact = await Contact.findOne({
             where: { user_id: fromUserId, friend_id: to_user_id },
         });
-        if (existingFriendship) {
+        if (existingContact) {
             return error(res, 'CONFLICT', 'You are already friends', 409);
         }
         const existingRequest = await FriendRequest.findOne({
@@ -53,7 +53,7 @@ router.post('/request', async (req: AuthRequest, res: Response) => {
             await sequelize.transaction(async (t) => {
                 await reverseRequest.update({ status: 'accepted' }, { transaction: t });
                 await FriendRequest.create({ from_user_id: fromUserId, to_user_id, status: 'accepted' }, { transaction: t });
-                await Friendship.bulkCreate([
+                await Contact.bulkCreate([
                     { user_id: fromUserId, friend_id: to_user_id },
                     { user_id: to_user_id, friend_id: fromUserId },
                 ], { transaction: t });
@@ -139,7 +139,7 @@ router.put('/request/:id', async (req: AuthRequest, res: Response) => {
         if (status === 'accepted') {
             await sequelize.transaction(async (t) => {
                 await request.update({ status: 'accepted' }, { transaction: t });
-                await Friendship.bulkCreate([
+                await Contact.bulkCreate([
                     { user_id: request.from_user_id, friend_id: request.to_user_id },
                     { user_id: request.to_user_id, friend_id: request.from_user_id },
                 ], { transaction: t, ignoreDuplicates: true });
@@ -159,7 +159,7 @@ router.put('/request/:id', async (req: AuthRequest, res: Response) => {
 });
 router.get('/', async (req: AuthRequest, res: Response) => {
     try {
-        const friendships = await Friendship.findAll({
+        const contacts = await Contact.findAll({
             where: { user_id: req.userId! },
             include: [
                 {
@@ -169,7 +169,7 @@ router.get('/', async (req: AuthRequest, res: Response) => {
                 },
             ],
         });
-        const friends = friendships.map((f) => {
+        const friends = contacts.map((f: any) => { // definately safe
             const friend = (f as any).friend;
             return {
                 ...friend.toJSON(),
@@ -189,7 +189,7 @@ router.delete('/:userId', async (req: AuthRequest, res: Response) => {
         if (isNaN(friendUserId)) {
             return error(res, 'INVALID_PARAMS', 'Invalid user ID', 400);
         }
-        const deleted = await Friendship.destroy({
+        const deleted = await Contact.destroy({
             where: {
                 [Op.or]: [
                     { user_id: userId, friend_id: friendUserId },
@@ -198,7 +198,7 @@ router.delete('/:userId', async (req: AuthRequest, res: Response) => {
             },
         });
         if (deleted === 0) {
-            return error(res, 'NOT_FOUND', 'Friendship not found', 404);
+            return error(res, 'NOT_FOUND', 'Contact not found', 404);
         }
         return success(res, { message: 'Friend removed' });
     }

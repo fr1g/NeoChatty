@@ -99,7 +99,7 @@ async function cleanupUsers(usernames) {
         await connection.query(`DELETE FROM messages WHERE sender_id IN (${userIds.map(() => '?').join(',')}) OR receiver_id IN (${userIds.map(() => '?').join(',')})`, [...userIds, ...userIds]);
         await connection.query(`DELETE FROM conversations WHERE user_id IN (${userIds.map(() => '?').join(',')}) OR peer_id IN (${userIds.map(() => '?').join(',')})`, [...userIds, ...userIds]);
         await connection.query(`DELETE FROM friend_requests WHERE from_user_id IN (${userIds.map(() => '?').join(',')}) OR to_user_id IN (${userIds.map(() => '?').join(',')})`, [...userIds, ...userIds]);
-        await connection.query(`DELETE FROM friendships WHERE user_id IN (${userIds.map(() => '?').join(',')}) OR friend_id IN (${userIds.map(() => '?').join(',')})`, [...userIds, ...userIds]);
+        await connection.query(`DELETE FROM contacts WHERE user_id IN (${userIds.map(() => '?').join(',')}) OR friend_id IN (${userIds.map(() => '?').join(',')})`, [...userIds, ...userIds]);
         await connection.query(`DELETE FROM blocks WHERE user_id IN (${userIds.map(() => '?').join(',')}) OR blocked_user_id IN (${userIds.map(() => '?').join(',')})`, [...userIds, ...userIds]);
         await deleteByUserIds('DELETE FROM files WHERE uploader_id');
         await deleteByUserIds('DELETE FROM privacy_settings WHERE user_id');

@@ -1,6 +1,6 @@
 import { Router, Response } from 'express';
 import { Op } from 'sequelize';
-import { User, Block, Friendship, FriendRequest } from '../models';
+import { User, Block, Contact, FriendRequest } from '../models';
 import { success, error } from '../utils/response';
 import { authMiddleware, AuthRequest } from '../middleware/auth';
 import sequelize from '../config/database';
@@ -31,7 +31,7 @@ router.post('/', async (req: AuthRequest, res: Response) => {
         }
         await sequelize.transaction(async (t) => {
             await Block.create({ user_id: userId, blocked_user_id: blockedUserId }, { transaction: t });
-            await Friendship.destroy({
+            await Contact.destroy({
                 where: {
                     [Op.or]: [
                         { user_id: userId, friend_id: blockedUserId },

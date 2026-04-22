@@ -2,7 +2,7 @@ import { Server as HttpServer } from 'http';
 import { Server, Socket } from 'socket.io';
 import jwt from 'jsonwebtoken';
 import { JWT_SECRET, JwtPayload } from '../middleware/auth';
-import { User, Message, Conversation, Friendship, Block } from '../models';
+import { User, Message, Conversation, Contact, Block } from '../models';
 import { Op } from 'sequelize';
 import sequelize from '../config/database';
 let io: Server;
@@ -93,12 +93,12 @@ export function setupSocket(httpServer: HttpServer) {
     return io;
 }
 async function notifyFriendsStatus(userId: number, isOnline: boolean) {
-    const friendships = await Friendship.findAll({
+    const contacts = await Contact.findAll({
         where: { user_id: userId },
         attributes: ['friend_id'],
     });
     const event = isOnline ? 'user:online' : 'user:offline';
-    for (const f of friendships) {
+    for (const f of contacts) {
         if (isUserOnline(f.friend_id)) {
             emitToUser(f.friend_id, event, { userId });
         }
@@ -134,7 +134,7 @@ async function handleMessageSend(socket: Socket, senderId: number, data: any, ca
             socket.emit('message:error', { code: 'INVALID_PARAMS', reason: 'Receiver ID is required' });
             return;
         }
-        const isFriend = await Friendship.findOne({
+        const isFriend = await Contact.findOne({
             where: { user_id: senderId, friend_id: receiver_id },
         });
         if (!isFriend) {

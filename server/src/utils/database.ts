@@ -3,7 +3,7 @@ const TABLES = [
     'users',
     'privacy_settings',
     'friend_requests',
-    'friendships',
+    'contacts',
     'blocks',
     'messages',
     'files',

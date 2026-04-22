@@ -1,6 +1,6 @@
 import { Router, Response } from 'express';
 import { Op } from 'sequelize';
-import { User, PrivacySetting, Friendship, Block, FriendRequest } from '../models';
+import { User, PrivacySetting, Contact, Block, FriendRequest } from '../models';
 import { success, error } from '../utils/response';
 import { authMiddleware, AuthRequest } from '../middleware/auth';
 
@@ -209,10 +209,10 @@ router.get('/:id', async (req: AuthRequest, res: Response) => {
             relationship = 'blocked';
         }
         else {
-            const friendship = await Friendship.findOne({
+            const contact = await Contact.findOne({
                 where: { user_id: req.userId!, friend_id: targetId },
             });
-            if (friendship) {
+            if (contact) {
                 relationship = 'friend';
             }
             else {

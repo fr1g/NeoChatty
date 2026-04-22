@@ -1,6 +1,6 @@
 import { Router, Response } from 'express';
 import { Op } from 'sequelize';
-import { Message, User, Friendship, Conversation } from '../models';
+import { Message, User, Contact, Conversation } from '../models';
 import { success, error } from '../utils/response';
 import { authMiddleware, AuthRequest } from '../middleware/auth';
 
@@ -16,7 +16,7 @@ router.get('/:friendId', async (req: AuthRequest, res: Response) => {
         if (isNaN(friendId)) {
             return error(res, 'INVALID_PARAMS', 'Invalid friend ID', 400);
         }
-        const isFriend = await Friendship.findOne({
+        const isFriend = await Contact.findOne({
             where: { user_id: userId, friend_id: friendId },
         });
         const hasConversation = !isFriend && await Conversation.findOne({
