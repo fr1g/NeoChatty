@@ -30,4 +30,4 @@ function buildOrigin(host: string): string {
 }
 export const API_ORIGIN = getEnvApiOrigin() ?? buildOrigin(getConfiguredHost());
 export const API_BASE_URL = `${API_ORIGIN}/api`;
-export const SOCKET_BASE_URL = API_ORIGIN;
+export const SOCKET_BASE_URL = `${API_ORIGIN}/chathub`;

@@ -1,11 +1,11 @@
 import User from './User';
 import PrivacySetting from './PrivacySetting';
 import FriendRequest from './FriendRequest';
-import Contact from './Contact';
 import Block from './Block';
 import Message from './Message';
 import File from './File';
 import Conversation from './Conversation';
+import Contact from './Contact';
 User.hasOne(PrivacySetting, { foreignKey: 'user_id', as: 'privacy' });
 PrivacySetting.belongsTo(User, { foreignKey: 'user_id' });
 User.hasMany(FriendRequest, { foreignKey: 'from_user_id', as: 'sentRequests' });

@@ -5,6 +5,7 @@ import os from 'os';
 import path from 'path';
 import sequelize from './config/database';
 import { setupSocket } from './socket';
+import { getConfig } from './config/index';
 import authRoutes from './routes/auth';
 import usersRoutes from './routes/users';
 import friendsRoutes from './routes/friends';
@@ -14,7 +15,9 @@ import messagesRoutes from './routes/messages';
 import conversationsRoutes from './routes/conversations';
 import { cleanupDuplicateIndexes } from './utils/database';
 import './models';
-import appConfig from './appconfig';
+import { renderMOTD } from './utils/motd';
+
+const appConfig = getConfig();
 
 const app = express();
 const server = http.createServer(app);
@@ -83,4 +86,30 @@ async function start() {
     }
 }
 start();
+const scriptDir = __dirname;
+const workingDir = process.cwd();
+console.log(`
+    Chatty: Server Info
+    -----
+    DIR
+    -----
+    scriptDir: ${scriptDir}
+    workingDir: ${workingDir}
+    -----
+    CONFIG
+    -----
+    USE_HTTPS: ${appConfig.USE_HTTPS}
+    PORT: ${appConfig.PORT}
+    DB:
+        NAME: ${appConfig.DB.NAME}
+        USER: ${appConfig.DB.USER}
+        HOST: ${appConfig.DB.HOST}
+        PORT: ${appConfig.DB.PORT}
+    -----
+    MOTD
+    -----
+        ${renderMOTD(true)}
+    -----
+`);
+
 console.log('Chatty: Server ready');

@@ -1,12 +1,7 @@
-export default {
-    USE_HTTPS: false,
-    PORT: 5637,
-    DB: {
-        NAME: 'chatty',
-        USER: 'root',
-        PASSWORD: '7355608',
-        HOST: 'localhost',
-        PORT: 3306,
+/**
+ * @deprecated 使用 ./config/index.ts 中的 getConfig() 替代
+ * 此文件保留用于向后兼容性
+ */
+import { getConfig } from './config/index';
 
-    }
-}
+export default getConfig();

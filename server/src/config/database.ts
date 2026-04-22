@@ -1,9 +1,11 @@
 import { Sequelize } from 'sequelize';
-import appConfig from './../appconfig';
+import { getConfig } from './index';
 
-const sequelize = new Sequelize(appConfig.DB.NAME ?? 'chatty', appConfig.DB.USER ?? 'root', appConfig.DB.PASSWORD ?? '7355608', {
-    host: appConfig.DB.HOST ?? 'localhost',
-    port: appConfig.DB.PORT ?? 3306,
+const appConfig = getConfig();
+
+const sequelize = new Sequelize(appConfig.DB.NAME, appConfig.DB.USER, appConfig.DB.PASSWORD, {
+    host: appConfig.DB.HOST,
+    port: appConfig.DB.PORT,
     dialect: 'mysql',
     logging: false,
     define: {

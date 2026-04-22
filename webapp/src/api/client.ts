@@ -11,7 +11,7 @@ function resolveApiOrigin(): string {
 }
 export const API_ORIGIN = resolveApiOrigin();
 export const BASE_URL = `${API_ORIGIN}/api`;
-export const SOCKET_BASE_URL = API_ORIGIN;
+export const SOCKET_BASE_URL = `${API_ORIGIN}/chathub`;
 let cachedAccessToken: string | null = null;
 let cachedRefreshToken: string | null = null;
 const client = axios.create({

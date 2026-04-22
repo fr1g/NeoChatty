@@ -23,7 +23,7 @@ export class ChattyClientConfig {
     }
 
     getSocket(): string {
-        return `http${this.useHttps ? 's' : ''}://${this.endpoint}:${SERVER_PORT}`;
+        return `http${this.useHttps ? 's' : ''}://${this.endpoint}:${SERVER_PORT}/chathub`;
     }
 }
 
