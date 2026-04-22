@@ -5,27 +5,44 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.UseTailwind();
 
-// Add services to the container.
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
 
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
-if (!app.Environment.IsDevelopment())
-{
-    app.UseExceptionHandler("/Error", createScopeForErrors: true);
-    // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
-    app.UseHsts();
-}
+var options = new DefaultFilesOptions();
+options.DefaultFileNames.Clear();
+options.DefaultFileNames.Add("index.html");
+app.UseDefaultFiles(options);
+app.UseStaticFiles();
 
-app.UseStatusCodePagesWithReExecute("/not-found", createScopeForStatusCodePages: true);
+app.MapWhen(ctx => ctx.Request.Path.StartsWithSegments("/stager"), blazorApp =>
+{
+    blazorApp.UsePathBase("/stager");
+    blazorApp.UseStaticFiles();
+    blazorApp.UseRouting();
+    blazorApp.UseAntiforgery();    
+    
+    if (!app.Environment.IsDevelopment())
+    {
+        blazorApp.UseExceptionHandler("/Error", createScopeForErrors: true);
+        blazorApp.UseHsts();
+    }
+    
+    blazorApp.UseEndpoints(endpoints =>
+    {
+        endpoints.MapBlazorHub();
+        endpoints.MapRazorComponents<App>()
+            .AddInteractiveServerRenderMode();
+    });
+    
+});
+
 app.UseHttpsRedirection();
 
-app.UseAntiforgery();
-
-app.MapStaticAssets();
-app.MapRazorComponents<App>()
-    .AddInteractiveServerRenderMode();
+app.MapWhen(ctx => !ctx.Request.Path.StartsWithSegments("/stager"), nonBlazor =>
+{
+    nonBlazor.UseStatusCodePagesWithReExecute("/not-found");
+});
 
 app.Run();

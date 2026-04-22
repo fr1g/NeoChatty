@@ -166,9 +166,6 @@
   .static {
     position: static;
   }
-  .table {
-    display: table;
-  }
   .min-h-screen {
     min-height: 100vh;
   }
@@ -183,8 +180,5 @@
   }
   .ps-3 {
     padding-inline-start: calc(var(--spacing) * 3);
-  }
-  .opacity-80 {
-    opacity: 80%;
   }
 }
