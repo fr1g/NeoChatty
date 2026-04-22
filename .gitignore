@@ -45,3 +45,5 @@ yarn-error.*
 
 # upload local test files
 /uploads
+
+llm.*
