@@ -10,39 +10,51 @@ builder.Services.AddRazorComponents()
 
 var app = builder.Build();
 
-var options = new DefaultFilesOptions();
-options.DefaultFileNames.Clear();
-options.DefaultFileNames.Add("index.html");
-app.UseDefaultFiles(options);
+app.UseHttpsRedirection();
+
+app.UseDefaultFiles(new DefaultFilesOptions
+{
+    DefaultFileNames = { "index.html" }
+});
 app.UseStaticFiles();
 
-app.MapWhen(ctx => ctx.Request.Path.StartsWithSegments("/stager"), blazorApp =>
+app.Map("/stager", stager =>
 {
-    blazorApp.UsePathBase("/stager");
-    blazorApp.UseStaticFiles();
-    blazorApp.UseRouting();
-    blazorApp.UseAntiforgery();    
-    
+    stager.UsePathBase("/stager");
+    stager.UseStaticFiles();
+    stager.UseRouting();
+    stager.UseAntiforgery();
+
     if (!app.Environment.IsDevelopment())
     {
-        blazorApp.UseExceptionHandler("/Error", createScopeForErrors: true);
-        blazorApp.UseHsts();
+        stager.UseExceptionHandler("/Error", createScopeForErrors: true);
+        stager.UseHsts();
     }
-    
-    blazorApp.UseEndpoints(endpoints =>
+
+    stager.UseEndpoints(endpoints =>
     {
         endpoints.MapBlazorHub();
         endpoints.MapRazorComponents<App>()
             .AddInteractiveServerRenderMode();
     });
-    
 });
 
-app.UseHttpsRedirection();
+app.MapWhen(
+    context => (!context.Request.Path.StartsWithSegments("/stager")),
+    chattyWeb =>
+    {
+        var defaultFilesOptions = new DefaultFilesOptions();
+        defaultFilesOptions.DefaultFileNames.Clear();
+        defaultFilesOptions.DefaultFileNames.Add("index.html");
+        chattyWeb.UseDefaultFiles(defaultFilesOptions);
 
-app.MapWhen(ctx => !ctx.Request.Path.StartsWithSegments("/stager"), nonBlazor =>
-{
-    nonBlazor.UseStatusCodePagesWithReExecute("/not-found");
-});
+        chattyWeb.UseStaticFiles();
+
+        chattyWeb.Run(async context =>
+        {
+            context.Response.ContentType = "text/html";
+            await context.Response.SendFileAsync(Path.Combine(app.Environment.WebRootPath, "index.html"));
+        });
+    });
 
 app.Run();
