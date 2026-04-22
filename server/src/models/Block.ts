@@ -1,5 +1,7 @@
 import { DataTypes, Model, Optional } from 'sequelize';
 import sequelize from '../config/database';
+
+// nexg-generation: migrate this relation into Contact
 interface BlockAttributes {
     id: number;
     user_id: number;

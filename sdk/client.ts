@@ -47,7 +47,7 @@ export class ChattyClient {
     }> = [];
 
     /**
-     * Must call ChattyClient.init() or await ChattyClient.initAsync()
+     * Must call ChattyClient.init(...) or await ChattyClient.initAsync(...)
      * @param config 
      */
     constructor(config: ChattyClientConfig) {
