@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import SettingsLayout from "./SettingsLayout";
 import { blocks as blocksApi, files } from "../../api";
-import type { User } from "../../types";
+import type { User } from "chatty-sdk";
 export default function Blacklist() {
     const [list, setList] = useState<User[]>([]);
     const [loading, setLoading] = useState(true);

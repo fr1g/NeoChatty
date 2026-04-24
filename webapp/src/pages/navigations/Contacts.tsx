@@ -3,8 +3,8 @@ import { Input } from "@headlessui/react";
 import { useContext, useEffect, useState, useCallback, type ReactNode } from "react";
 import { ReusableFuncs } from "../../main";
 import { friends as friendsApi, files } from "../../api";
-import * as socketService from "../../services/socket";
-import type { User } from "../../types";
+import { ChattySocket as socketService } from 'chatty-sdk';
+import type { User } from "chatty-sdk";
 function ActionCard({ title, onClick, badge, icon, }: {
     title: string;
     onClick: () => void;

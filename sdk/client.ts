@@ -24,7 +24,8 @@ export class ChattyClientConfig {
     }
 
     getSocket(): string {
-        return `http${this.useHttps ? 's' : ''}://${this.endpoint}:${SERVER_PORT}/chathub`;
+        return `http${this.useHttps ? 's' : ''}://${this.endpoint}:${SERVER_PORT}`;
+        // return `http${this.useHttps ? 's' : ''}://${this.endpoint}:${SERVER_PORT}/chathub`;
     }
 }
 
@@ -181,7 +182,7 @@ export class ChattyClient {
 
 
     // sync init
-    initClient(set: (key: string, value: string) => void, get: (key: string) => string | null, remove: (key: string) => void) {
+    initClient(set: (key: string, value: string) => void, get: (key: string) => string | null, remove: (key: string) => void): ChattyClient {
         const client = this.client;
         const rawUrl = this.config.getApi();
         client.interceptors.request.use((config) => {
@@ -243,10 +244,11 @@ export class ChattyClient {
         });
 
         this.status = "default";
+        return this;
     }
 
     // async init
-    async initClientAsync(set: (key: string, value: string) => Promise<void>, get: (key: string) => Promise<string | null>, remove: (key: string) => Promise<void>) {
+    async initClientAsync(set: (key: string, value: string) => Promise<void>, get: (key: string) => Promise<string | null>, remove: (key: string) => Promise<void>): Promise<ChattyClient> {
         const client = this.client;
         const rawUrl = this.config.getApi();
         client.interceptors.request.use(async (config) => {
@@ -308,6 +310,7 @@ export class ChattyClient {
         });
 
         this.status = "async";
+        return this;
     }
 
 }

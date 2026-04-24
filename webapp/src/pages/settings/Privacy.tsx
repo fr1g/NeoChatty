@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import SettingsLayout from "./SettingsLayout";
 import { users as usersApi } from "../../api";
-import type { PrivacySettings as PrivacyState } from "../../types";
+import type { PrivacySettings as PrivacyState } from "chatty-sdk";
 export default function PrivacySettings() {
     const [settings, setSettings] = useState<PrivacyState | null>(null);
     const [loading, setLoading] = useState(true);

@@ -3,8 +3,8 @@ import { useContext, useEffect, useState } from "react";
 import { ChatMessageIcon, ChevronLeftIcon, UserAddIcon, DeleteIcon, CloseCircleIcon, CheckCircleIcon } from "tdesign-icons-react";
 import { ReusableFuncs, type ModalControl } from "../main";
 import type { DialogInfo } from "../comps/Modal";
-import { users as usersApi, friends as friendsApi, blocks as blocksApi, files } from "../api";
-import type { UserProfile } from "../types";
+import { users as usersApi, friends as friendsApi, blocks as blocksApi, files } from "../api/index";
+import type { UserProfile } from "chatty-sdk";
 export default function UserView() {
     const reuses = useContext(ReusableFuncs);
     const { userId } = useParams();

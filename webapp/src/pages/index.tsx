@@ -1,7 +1,7 @@
 import { useContext, useEffect, useMemo, useState } from "react";
 import { ChatBubbleIcon, UserAddIcon, UserCircleIcon, UserListIcon } from "tdesign-icons-react";
-import { conversations, friends } from "../api";
-import type { Conversation } from "../types";
+import { conversations, friends } from "../api/index";
+import type { Conversation } from "chatty-sdk";
 import { ReusableFuncs } from "../main";
 import { useAuth } from "../context/AuthContext";
 type DashboardState = {

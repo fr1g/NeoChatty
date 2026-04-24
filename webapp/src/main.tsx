@@ -22,7 +22,7 @@ import { conversations as convApi, files, friends as friendsApi } from './api';
 import ChangePassword from './pages/settings/ChangePassword';
 import Blacklist from './pages/settings/Blacklist';
 import SettingsHome from './pages/settings/Home';
-import * as socketService from './services/socket';
+import { ChattySocket as socketService, type User } from 'chatty-sdk';
 import About from './pages/settings/About';
 
 export interface ReusableFuncsDef {
@@ -69,7 +69,9 @@ function AppScope({ side, setSide, mgr }: {
     setSide: Function;
     mgr: ThemeHelper;
 }) {
-    const { user } = useAuth();
+
+    const auth = useAuth();
+    const [user, setUser] = useState<User | null>(auth.user);
     const mobileScreen = useRef<HTMLDivElement | null>(null);
     const location = useLocation();
     const navigate = useNavigate();
@@ -107,8 +109,11 @@ function AppScope({ side, setSide, mgr }: {
         }
     }, []);
     useEffect(() => {
-        setInterval(() => {
-            fetchBadges();
+        setUser(auth.user);
+    }, [auth]);
+    useEffect(() => {
+        let i = setInterval(() => {
+            if (auth.isLoggedIn) fetchBadges();
         }, 1000);
         const offMsg = socketService.onMessage(() => fetchBadges());
         const offRecall = socketService.onMessageRecalled(() => fetchBadges());
@@ -116,13 +121,14 @@ function AppScope({ side, setSide, mgr }: {
         const offReq = socketService.onFriendRequest(() => fetchBadges());
         const offAccepted = socketService.onFriendAccepted(() => fetchBadges());
         return () => {
+            clearInterval(i);
             offMsg();
             offRecall();
             offRead();
             offReq();
             offAccepted();
         };
-    }, [fetchBadges]);
+    }, [fetchBadges, auth.isLoggedIn]);
     useEffect(() => {
         setNav(resolveNavFromPath(location.pathname));
         setSide(location.pathname === '/' ? 'left' : 'right');
@@ -292,6 +298,8 @@ function AuthGate({ side, setSide, mgr }: {
     </BrowserRouter>);
 }
 createRoot(document.getElementById('root')!).render(<Layout />);
+
+
 // todo
 // replace using sdk
 // here to create a client, find the localStorage if here's a SET endpoint

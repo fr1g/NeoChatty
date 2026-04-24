@@ -5,8 +5,9 @@ import { useContext, useEffect, useState, useCallback } from "react";
 import { AvataredNavListItemFactory } from "../../comps/AvataredListItem";
 import { ReusableFuncs } from "../../main";
 import { conversations, files } from "../../api";
-import * as socketService from "../../services/socket";
-import type { Conversation } from "../../types";
+import { ChattySocket as socketService } from 'chatty-sdk';
+import type { Conversation } from "chatty-sdk";
+import { useAuth } from "../../context/AuthContext";
 
 
 export default function RecentChats({ openUserSearch, gotoContacts }: {
@@ -18,6 +19,7 @@ export default function RecentChats({ openUserSearch, gotoContacts }: {
     const [items, setItems] = useState<NavListItem[]>([]);
     const [searching, setSearching] = useState(false);
     const [searchText, setSearchText] = useState('');
+    const auth = useAuth();
     const loadConversations = useCallback(async () => {
         try {
             const res = await conversations.getConversations();
@@ -27,10 +29,11 @@ export default function RecentChats({ openUserSearch, gotoContacts }: {
         }
     }, []);
     useEffect(() => {
-        setInterval(() => {
-            loadConversations();
+        let i = setInterval(() => {
+            if (auth.isLoggedIn) loadConversations();
         }, 1000);
-    }, [loadConversations]);
+        return () => clearInterval(i);
+    }, [loadConversations, auth.isLoggedIn]);
     useEffect(() => {
         const offMsg = socketService.onMessage(() => loadConversations());
         const offRecalled = socketService.onMessageRecalled(() => loadConversations());

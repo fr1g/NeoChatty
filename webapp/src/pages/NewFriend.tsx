@@ -1,8 +1,8 @@
 import { useContext, useState, useEffect, useCallback, useRef } from "react";
 import { ChevronLeftIcon, SearchIcon, CheckIcon, CloseIcon, UserAddIcon } from "tdesign-icons-react";
 import { ReusableFuncs } from "../main";
-import { users as usersApi, friends as friendsApi, files } from "../api";
-import type { FriendRequest, UserProfile } from "../types";
+import { users as usersApi, friends as friendsApi, files } from "../api/index";
+import type { FriendRequest, UserProfile } from "chatty-sdk";
 const PAGE_SIZE = 20;
 
 export default function NewFriend() {

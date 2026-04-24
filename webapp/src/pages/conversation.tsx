@@ -3,9 +3,9 @@ import { useParams } from "react-router";
 import { ReusableFuncs, ToastableContext } from "../main";
 import { ChevronLeftIcon, SendIcon, AttachIcon, ImageIcon, VideoIcon, FileIcon, EllipsisIcon } from "tdesign-icons-react";
 import { useAuth } from "../context/AuthContext";
-import { messages as messagesApi, files, users as usersApi } from "../api";
-import * as socketService from "../services/socket";
-import type { Message } from "../types";
+import { messages as messagesApi, files, users as usersApi } from "../api/index";
+import { ChattySocket as socketService } from 'chatty-sdk';
+import type { Message } from "chatty-sdk";
 
 type MessageActionMenuState = {
     messageKey: number;

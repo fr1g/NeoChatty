@@ -1,6 +1,6 @@
 import { io, Socket } from 'socket.io-client';
 
-let socket: Socket | null = null;
+export let socket: Socket | null = null;
 let reconnectCallback: (() => void) | null = null;
 let isFirstConnect = true;
 export function setOnReconnect(cb: () => void) {
@@ -27,6 +27,7 @@ export function connect(tokens: { accessToken: string | null, refreshToken: stri
         }
         isFirstConnect = false;
     });
+    socket.connect();
     return socket;
 }
 export function disconnect(): void {
@@ -45,6 +46,7 @@ function on<T = any>(event: string, callback: (data: T) => void): () => void {
     };
 }
 export function sendMessage(data: any): void {
+    console.log(`msg out ${JSON.stringify(data)}`, socket)
     socket?.emit('message:send', data);
 }
 export function recallMessage(message_id: number): void {

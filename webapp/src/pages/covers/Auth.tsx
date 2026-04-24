@@ -21,7 +21,7 @@ export default function Auth() {
             await login(username.trim(), password);
         }
         catch (e: any) {
-            setError(e?.response?.data?.error?.message || e?.message || 'Log In failed. Please check your username and password');
+            setError(`Unexpected: ${e?.response?.data?.error?.message || e?.message || 'Log In failed. Please check your username and password'}`);
         }
         finally {
             setLoading(false);
@@ -55,7 +55,7 @@ export default function Auth() {
             await register(username.trim(), password, displayName.trim() || undefined);
         }
         catch (e: any) {
-            setError(e?.response?.data?.error?.message || e?.message || 'Register failed. Please try again later');
+            setError(`Unexpected: ${e?.response?.data?.error?.message || e?.message || 'Register failed. Please try again later'}`);
         }
         finally {
             setLoading(false);

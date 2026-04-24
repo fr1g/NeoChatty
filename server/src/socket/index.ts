@@ -76,6 +76,7 @@ export function setupSocket(httpServer: HttpServer) {
         }
         pushUnreadMessages(socket, userId);
         socket.on('message:send', async (data, callback) => {
+            console.log('received: ', userId)
             await handleMessageSend(socket, userId, data, callback);
         });
         socket.on('message:recall', async (data, callback) => {
