@@ -6,14 +6,16 @@ let isFirstConnect = true;
 export function setOnReconnect(cb: () => void) {
     reconnectCallback = cb;
 }
-export function connect(tokens: { accessToken: string, refreshToken: string }, url: string): Socket {
+export function connect(tokens: { accessToken: string | null, refreshToken: string | null }, url: string): Socket {
     const token = tokens?.accessToken ?? '';
+    console.log(token, tokens, url, 0);
     if (socket) {
         socket.disconnect();
     }
     isFirstConnect = true;
     socket = io(url, {
         auth: { token },
+        path: '/chathub/socket.io',
         reconnection: true,
         reconnectionDelay: 1000,
         reconnectionDelayMax: 30000,

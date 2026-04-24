@@ -9,6 +9,7 @@ const REFRESH_EXCLUDED_PATHS = [
     '/auth/refresh',
 ];
 
+
 export class ChattyClientConfig {
     useHttps: boolean;
     endpoint: string;
@@ -70,7 +71,7 @@ export class ChattyClient {
         set(REFRESH_TOKEN_KEY, refresh);
     }
 
-    getTokens(get: (key: string) => string): {
+    getTokens(get: (key: string) => string | null): {
         accessToken: string | null;
         refreshToken: string | null;
     } {
@@ -120,12 +121,12 @@ export class ChattyClient {
 
     // End Local RW related
 
-    getAuthHeaders(get: (key: string) => string): Record<string, string> {
+    getAuthHeaders(get: (key: string) => string | null): Record<string, string> {
         const { accessToken } = this.getTokens(get);
         return this.appendAuthHeader(accessToken)
     }
 
-    appendAccessToken(url: string, get: (key: string) => string): string {
+    appendAccessToken(url: string, get: (key: string) => string | null): string {
         const { accessToken } = this.getTokens(get);
         if (!accessToken)
             return url;
@@ -134,12 +135,12 @@ export class ChattyClient {
 
     //
 
-    async getAuthHeadersAsync(get: (key: string) => Promise<string>): Promise<Record<string, string>> {
+    async getAuthHeadersAsync(get: (key: string) => Promise<string | null>): Promise<Record<string, string>> {
         const { accessToken } = await this.getTokensAsync(get);
         return this.appendAuthHeader(accessToken)
     }
 
-    async appendAccessTokenAsync(url: string, get: (key: string) => Promise<string>): Promise<string> {
+    async appendAccessTokenAsync(url: string, get: (key: string) => Promise<string | null>): Promise<string> {
         const { accessToken } = await this.getTokensAsync(get);
         if (!accessToken)
             return url;
@@ -180,7 +181,7 @@ export class ChattyClient {
 
 
     // sync init
-    initClient(set: (key: string, value: string) => void, get: (key: string) => string, remove: (key: string) => void) {
+    initClient(set: (key: string, value: string) => void, get: (key: string) => string | null, remove: (key: string) => void) {
         const client = this.client;
         const rawUrl = this.config.getApi();
         client.interceptors.request.use((config) => {
@@ -245,7 +246,7 @@ export class ChattyClient {
     }
 
     // async init
-    async initClientAsync(set: (key: string, value: string) => Promise<void>, get: (key: string) => Promise<string>, remove: (key: string) => Promise<void>) {
+    async initClientAsync(set: (key: string, value: string) => Promise<void>, get: (key: string) => Promise<string | null>, remove: (key: string) => Promise<void>) {
         const client = this.client;
         const rawUrl = this.config.getApi();
         client.interceptors.request.use(async (config) => {

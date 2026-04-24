@@ -1,21 +1,27 @@
 import * as Client from './client';
 import * as Classes from './class';
 import * as Api from './api';
+import * as Socket from './socket';
 
-export { Client, Classes as ChattyModel, Api };
+export { Client, Classes as ChattyModel, Api, Socket as ChattySocket };
 
-export type ChattyClient = Client.ChattyClient;
-export type ChattyClientConfig = Client.ChattyClientConfig;
+export { ChattyClient, ChattyClientConfig } from './client';
 
-export type User = Classes.User;
-export type PrivacySettings = Classes.PrivacySettings;
-export type UserProfile = Classes.UserProfile;
-export type FriendRequest = Classes.FriendRequest;
-export type Message = Classes.Message;
-export type Conversation = Classes.Conversation;
-export type ApiResponse<T> = Classes.ApiResponse<T>;
-export type AuthTokens = Classes.AuthTokens;
-export type LoginResponse = Classes.LoginResponse;
-export type UploadResponse = Classes.UploadResponse;
+export {
+    User,
+    PrivacySettings,
+    UserProfile,
+    FriendRequest,
+    Message,
+    Conversation,
+    ApiResponse,
+    AuthTokens,
+    LoginResponse,
+    UploadResponse
+} from './class';
 
 export const ConstructClient = Api.constructClient;
+// export type AuthExpiredCallback = AuthExpiredCallback
+
+import { ChattyClientConfig } from './client';
+export const DEFAULT_CLIENT_CONFIG = new ChattyClientConfig(false, 'rus.kami.su');

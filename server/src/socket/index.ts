@@ -42,7 +42,7 @@ function removeUserSocket(userId: number, socketId: string) {
 }
 export function setupSocket(httpServer: HttpServer) {
     io = new Server(httpServer, {
-        path: 'chathub',
+        path: '/chathub/socket.io',
         cors: {
             origin: '*',
             methods: ['GET', 'POST'],
