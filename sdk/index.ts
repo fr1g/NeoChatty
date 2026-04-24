@@ -1,6 +1,6 @@
-import * as Client from './client.ts';
-import * as Classes from './class.ts';
-import * as Api from './api.ts';
+import * as Client from './client';
+import * as Classes from './class';
+import * as Api from './api';
 
 export { Client, Classes as ChattyModel, Api };
 
@@ -17,3 +17,5 @@ export type ApiResponse<T> = Classes.ApiResponse<T>;
 export type AuthTokens = Classes.AuthTokens;
 export type LoginResponse = Classes.LoginResponse;
 export type UploadResponse = Classes.UploadResponse;
+
+export const ConstructClient = Api.constructClient;

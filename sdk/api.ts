@@ -1,7 +1,7 @@
-import { ApiResponse, Conversation, FriendRequest, LoginResponse, Message, PrivacySettings, User, UserProfile, type UploadResponse } from './class.ts';
-import { ChattyClient } from './client.ts';
+import { ApiResponse, Conversation, FriendRequest, LoginResponse, Message, PrivacySettings, User, UserProfile, type UploadResponse } from './class';
+import { ChattyClient } from './client';
 
-function constructClient(chatty: ChattyClient) {
+export function constructClient(chatty: ChattyClient) {
 
     const client = chatty.client;
 
