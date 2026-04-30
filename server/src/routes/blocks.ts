@@ -9,6 +9,53 @@ import sequelize from '../config/database';
 
 const router: Router = Router();
 router.use(authMiddleware);
+
+/**
+ * @swagger
+ * /blocks:
+ *   post:
+ *     summary: Block a user
+ *     description: Blocks a user and removes them from contacts and pending friend requests
+ *     tags:
+ *       - Blocks
+ *     security:
+ *       - BearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - user_id
+ *             properties:
+ *               user_id:
+ *                 type: integer
+ *     responses:
+ *       201:
+ *         description: User blocked successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: success
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     message:
+ *                       type: string
+ *       400:
+ *         description: Invalid parameters
+ *       404:
+ *         description: Target user not found
+ *       409:
+ *         description: User is already blocked
+ *       500:
+ *         description: Internal server error
+ */
 router.post('/', async (req: AuthRequest, res: Response) => {
     try {
         const { user_id: blockedUserId } = req.body;
@@ -57,6 +104,56 @@ router.post('/', async (req: AuthRequest, res: Response) => {
         return error(res, 'SERVER_ERROR', 'Internal server error', 500);
     }
 });
+
+/**
+ * @swagger
+ * /blocks:
+ *   get:
+ *     summary: Get blocked users list
+ *     description: Retrieves all users blocked by the authenticated user
+ *     tags:
+ *       - Blocks
+ *     security:
+ *       - BearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Blocked users retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: success
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       id:
+ *                         type: integer
+ *                       user_id:
+ *                         type: integer
+ *                       blocked_user_id:
+ *                         type: integer
+ *                       created_at:
+ *                         type: string
+ *                         format: date-time
+ *                       blockedUser:
+ *                         type: object
+ *                         properties:
+ *                           id:
+ *                             type: integer
+ *                           username:
+ *                             type: string
+ *                           display_name:
+ *                             type: string
+ *                           avatar_locator:
+ *                             type: string
+ *       500:
+ *         description: Internal server error
+ */
 router.get('/', async (req: AuthRequest, res: Response) => {
     try {
         const blocks = await Block.findAll({
@@ -76,6 +173,46 @@ router.get('/', async (req: AuthRequest, res: Response) => {
         return error(res, 'SERVER_ERROR', 'Internal server error', 500);
     }
 });
+
+/**
+ * @swagger
+ * /blocks/{userId}:
+ *   delete:
+ *     summary: Unblock a user
+ *     description: Removes a user from the blocked list
+ *     tags:
+ *       - Blocks
+ *     security:
+ *       - BearerAuth: []
+ *     parameters:
+ *       - name: userId
+ *         in: path
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: User unblocked successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: success
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     message:
+ *                       type: string
+ *       400:
+ *         description: Invalid user ID
+ *       404:
+ *         description: User is not in blocklist
+ *       500:
+ *         description: Internal server error
+ */
 router.delete('/:userId', async (req: AuthRequest, res: Response) => {
     try {
         const blockedUserId = parseInt(req.params.userId);

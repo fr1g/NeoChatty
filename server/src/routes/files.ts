@@ -52,6 +52,63 @@ const upload = multer({
 });
 
 const router: Router = Router();
+
+/**
+ * @swagger
+ * /files/upload:
+ *   post:
+ *     summary: Upload a file
+ *     description: Uploads a file with size limit (50MB) and MIME type validation
+ *     tags:
+ *       - Files
+ *     security:
+ *       - BearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - file
+ *             properties:
+ *               file:
+ *                 type: string
+ *                 format: binary
+ *               original_name:
+ *                 type: string
+ *                 description: Original file name (optional)
+ *     responses:
+ *       201:
+ *         description: File uploaded successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: success
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     locator:
+ *                       type: string
+ *                     original_name:
+ *                       type: string
+ *                     file_size:
+ *                       type: integer
+ *                     mime_type:
+ *                       type: string
+ *       400:
+ *         description: No file uploaded
+ *       413:
+ *         description: File too large (max 50MB)
+ *       415:
+ *         description: Unsupported file type
+ *       500:
+ *         description: Internal server error
+ */
 function resolveOriginalName(rawName: unknown, fallbackName: string): string {
     if (typeof rawName !== 'string') {
         return fallbackName;
@@ -62,6 +119,36 @@ function resolveOriginalName(rawName: unknown, fallbackName: string): string {
     }
     return path.basename(trimmedName);
 }
+
+/**
+ * @swagger
+ * /files/{locator}:
+ *   get:
+ *     summary: Download a file
+ *     description: Downloads a file by its locator. Requires authentication and file access rights.
+ *     tags:
+ *       - Files
+ *     security:
+ *       - BearerAuth: []
+ *     parameters:
+ *       - name: locator
+ *         in: path
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: File downloaded successfully
+ *         content:
+ *           application/octet-stream:
+ *             schema:
+ *               type: string
+ *               format: binary
+ *       404:
+ *         description: File not found or file has been deleted
+ *       500:
+ *         description: Failed to download file
+ */
 router.post('/upload', authMiddleware, (req: AuthRequest, res: Response) => {
     upload.single('file')(req, res, async (err) => {
         if (err) {

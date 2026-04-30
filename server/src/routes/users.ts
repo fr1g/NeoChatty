@@ -7,6 +7,55 @@ import { authMiddleware, AuthRequest } from '../middleware/auth';
 
 const router: Router = Router();
 router.use(authMiddleware);
+
+/**
+ * @swagger
+ * /users/me:
+ *   get:
+ *     summary: Get current user profile
+ *     description: Retrieves the authenticated user's profile information including privacy settings
+ *     tags:
+ *       - Users
+ *     security:
+ *       - BearerAuth: []
+ *     responses:
+ *       200:
+ *         description: User profile retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: success
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     id:
+ *                       type: integer
+ *                     username:
+ *                       type: string
+ *                     display_name:
+ *                       type: string
+ *                     avatar_locator:
+ *                       type: string
+ *                     background_locator:
+ *                       type: string
+ *                     privacy:
+ *                       type: object
+ *                       properties:
+ *                         searchable_by_username:
+ *                           type: boolean
+ *                         searchable_by_display_name:
+ *                           type: boolean
+ *                         show_avatar_to_strangers:
+ *                           type: boolean
+ *       404:
+ *         description: User not found
+ *       500:
+ *         description: Internal server error
+ */
 router.get('/me', async (req: AuthRequest, res: Response) => {
     try {
         const user = await User.findByPk(req.userId!, {
@@ -28,6 +77,62 @@ router.get('/me', async (req: AuthRequest, res: Response) => {
         return error(res, 'SERVER_ERROR', 'Internal server error', 500);
     }
 });
+
+/**
+ * @swagger
+ * /users/me:
+ *   put:
+ *     summary: Update current user profile
+ *     description: Updates display name, avatar, and background locator for the authenticated user
+ *     tags:
+ *       - Users
+ *     security:
+ *       - BearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               display_name:
+ *                 type: string
+ *                 description: Display name (1-50 characters)
+ *               avatar_locator:
+ *                 type: string
+ *               background_locator:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Profile updated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: success
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     id:
+ *                       type: integer
+ *                     username:
+ *                       type: string
+ *                     display_name:
+ *                       type: string
+ *                     avatar_locator:
+ *                       type: string
+ *                     background_locator:
+ *                       type: string
+ *       400:
+ *         description: Invalid input parameters
+ *       404:
+ *         description: User not found
+ *       500:
+ *         description: Internal server error
+ */
 router.put('/me', async (req: AuthRequest, res: Response) => {
     try {
         const { display_name, avatar_locator, background_locator } = req.body;
@@ -61,6 +166,42 @@ router.put('/me', async (req: AuthRequest, res: Response) => {
         return error(res, 'SERVER_ERROR', 'Internal server error', 500);
     }
 });
+
+/**
+ * @swagger
+ * /users/me/privacy:
+ *   get:
+ *     summary: Get user privacy settings
+ *     description: Retrieves the privacy settings for the authenticated user
+ *     tags:
+ *       - Users
+ *     security:
+ *       - BearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Privacy settings retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: success
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     searchable_by_username:
+ *                       type: boolean
+ *                     searchable_by_display_name:
+ *                       type: boolean
+ *                     show_avatar_to_strangers:
+ *                       type: boolean
+ *       404:
+ *         description: Privacy settings not found
+ *       500:
+ *         description: Internal server error
+ */
 router.get('/me/privacy', async (req: AuthRequest, res: Response) => {
     try {
         const privacy = await PrivacySetting.findByPk(req.userId!);
@@ -77,6 +218,55 @@ router.get('/me/privacy', async (req: AuthRequest, res: Response) => {
         return error(res, 'SERVER_ERROR', 'Internal server error', 500);
     }
 });
+
+/**
+ * @swagger
+ * /users/me/privacy:
+ *   put:
+ *     summary: Update user privacy settings
+ *     description: Updates privacy settings for the authenticated user
+ *     tags:
+ *       - Users
+ *     security:
+ *       - BearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               searchable_by_username:
+ *                 type: boolean
+ *               searchable_by_display_name:
+ *                 type: boolean
+ *               show_avatar_to_strangers:
+ *                 type: boolean
+ *     responses:
+ *       200:
+ *         description: Privacy settings updated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: success
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     searchable_by_username:
+ *                       type: boolean
+ *                     searchable_by_display_name:
+ *                       type: boolean
+ *                     show_avatar_to_strangers:
+ *                       type: boolean
+ *       404:
+ *         description: Privacy settings not found
+ *       500:
+ *         description: Internal server error
+ */
 router.put('/me/privacy', async (req: AuthRequest, res: Response) => {
     try {
         const { searchable_by_username, searchable_by_display_name, show_avatar_to_strangers } = req.body;
@@ -104,6 +294,72 @@ router.put('/me/privacy', async (req: AuthRequest, res: Response) => {
         return error(res, 'SERVER_ERROR', 'Internal server error', 500);
     }
 });
+
+/**
+ * @swagger
+ * /users/search:
+ *   get:
+ *     summary: Search for users
+ *     description: Searches for users by username or display name. Respects privacy settings and blocks.
+ *     tags:
+ *       - Users
+ *     security:
+ *       - BearerAuth: []
+ *     parameters:
+ *       - name: q
+ *         in: query
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Search query
+ *       - name: page
+ *         in: query
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *       - name: limit
+ *         in: query
+ *         schema:
+ *           type: integer
+ *           default: 20
+ *           maximum: 100
+ *     responses:
+ *       200:
+ *         description: Search results
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: success
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     users:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           id:
+ *                             type: integer
+ *                           username:
+ *                             type: string
+ *                           display_name:
+ *                             type: string
+ *                           avatar_locator:
+ *                             type: string
+ *                             nullable: true
+ *                     total:
+ *                       type: integer
+ *                     page:
+ *                       type: integer
+ *                     limit:
+ *                       type: integer
+ *       500:
+ *         description: Internal server error
+ */
 router.get('/search', async (req: AuthRequest, res: Response) => {
     try {
         const q = String(req.query.q || '').trim();
@@ -172,6 +428,63 @@ router.get('/search', async (req: AuthRequest, res: Response) => {
         return error(res, 'SERVER_ERROR', 'Internal server error', 500);
     }
 });
+
+/**
+ * @swagger
+ * /users/{id}:
+ *   get:
+ *     summary: Get user profile by ID
+ *     description: Retrieves another user's profile with relationship status. Cannot use for own profile.
+ *     tags:
+ *       - Users
+ *     security:
+ *       - BearerAuth: []
+ *     parameters:
+ *       - name: id
+ *         in: path
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: User profile retrieved
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: success
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     id:
+ *                       type: integer
+ *                     username:
+ *                       type: string
+ *                     display_name:
+ *                       type: string
+ *                     avatar_locator:
+ *                       type: string
+ *                       nullable: true
+ *                     background_locator:
+ *                       type: string
+ *                     relationship:
+ *                       type: string
+ *                       enum: [friend, pending_sent, pending_received, stranger, blocked]
+ *                     friend_request_id:
+ *                       type: integer
+ *                       nullable: true
+ *       400:
+ *         description: Invalid parameters
+ *       403:
+ *         description: Access forbidden (blocked or you are blocked)
+ *       404:
+ *         description: User not found
+ *       500:
+ *         description: Internal server error
+ */
 router.get('/:id', async (req: AuthRequest, res: Response) => {
     try {
         const targetId = parseInt(req.params.id);

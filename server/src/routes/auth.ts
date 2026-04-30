@@ -8,6 +8,72 @@ import sequelize from '../config/database';
 import { disconnectUser } from '../socket';
 
 const router: Router = Router();
+
+/**
+ * @swagger
+ * /auth/register:
+ *   post:
+ *     summary: Register a new user account
+ *     description: Creates a new user account with username, password, and optional display name
+ *     tags:
+ *       - Authentication
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - username
+ *               - password
+ *             properties:
+ *               username:
+ *                 type: string
+ *                 description: Username (3-20 chars, alphanumeric and underscore only)
+ *               password:
+ *                 type: string
+ *                 description: Password (minimum 6 characters)
+ *               display_name:
+ *                 type: string
+ *                 description: Display name (optional, max 50 chars)
+ *     responses:
+ *       201:
+ *         description: User successfully registered
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: success
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     user:
+ *                       type: object
+ *                       properties:
+ *                         id:
+ *                           type: integer
+ *                         username:
+ *                           type: string
+ *                         display_name:
+ *                           type: string
+ *                         avatar_locator:
+ *                           type: string
+ *                         background_locator:
+ *                           type: string
+ *                     accessToken:
+ *                       type: string
+ *                     refreshToken:
+ *                       type: string
+ *       400:
+ *         description: Invalid input parameters
+ *       409:
+ *         description: Username already exists
+ *       500:
+ *         description: Internal server error
+ */
 router.post('/register', async (req, res) => {
     try {
         const { username, password, display_name } = req.body;
@@ -58,6 +124,67 @@ router.post('/register', async (req, res) => {
         return error(res, 'SERVER_ERROR', 'Internal server error', 500);
     }
 });
+
+/**
+ * @swagger
+ * /auth/login:
+ *   post:
+ *     summary: Login with username and password
+ *     description: Authenticates a user and returns access/refresh tokens
+ *     tags:
+ *       - Authentication
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - username
+ *               - password
+ *             properties:
+ *               username:
+ *                 type: string
+ *               password:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Login successful
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: success
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     user:
+ *                       type: object
+ *                       properties:
+ *                         id:
+ *                           type: integer
+ *                         username:
+ *                           type: string
+ *                         display_name:
+ *                           type: string
+ *                         avatar_locator:
+ *                           type: string
+ *                         background_locator:
+ *                           type: string
+ *                     accessToken:
+ *                       type: string
+ *                     refreshToken:
+ *                       type: string
+ *       400:
+ *         description: Missing credentials
+ *       401:
+ *         description: Invalid credentials
+ *       500:
+ *         description: Internal server error
+ */
 router.post('/login', async (req, res) => {
     try {
         const { username, password } = req.body;
@@ -91,6 +218,51 @@ router.post('/login', async (req, res) => {
         return error(res, 'SERVER_ERROR', 'Internal server error', 500);
     }
 });
+
+/**
+ * @swagger
+ * /auth/refresh:
+ *   post:
+ *     summary: Refresh access token using refresh token
+ *     description: Generates new access and refresh tokens using a valid refresh token
+ *     tags:
+ *       - Authentication
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - refreshToken
+ *             properties:
+ *               refreshToken:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Tokens refreshed successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: success
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     accessToken:
+ *                       type: string
+ *                     refreshToken:
+ *                       type: string
+ *       400:
+ *         description: Missing refresh token
+ *       401:
+ *         description: Refresh token invalid or expired
+ *       500:
+ *         description: Internal server error
+ */
 router.post('/refresh', async (req, res) => {
     try {
         const { refreshToken } = req.body;
@@ -115,6 +287,55 @@ router.post('/refresh', async (req, res) => {
         return error(res, 'UNAUTHORIZED', 'Refresh token is invalid or expired', 401);
     }
 });
+
+/**
+ * @swagger
+ * /auth/password:
+ *   put:
+ *     summary: Change user password
+ *     description: Updates user password. Requires authentication and old password verification.
+ *     tags:
+ *       - Authentication
+ *     security:
+ *       - BearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - old_password
+ *               - new_password
+ *             properties:
+ *               old_password:
+ *                 type: string
+ *               new_password:
+ *                 type: string
+ *                 description: Minimum 6 characters
+ *     responses:
+ *       200:
+ *         description: Password changed successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: success
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     message:
+ *                       type: string
+ *       400:
+ *         description: Invalid input parameters
+ *       401:
+ *         description: Old password is incorrect or user not found
+ *       500:
+ *         description: Internal server error
+ */
 router.put('/password', authMiddleware, async (req: AuthRequest, res) => {
     try {
         const { old_password, new_password } = req.body;

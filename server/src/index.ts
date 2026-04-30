@@ -3,6 +3,7 @@ import cors from 'cors';
 import http from 'http';
 import os from 'os';
 import path from 'path';
+import swaggerUi from 'swagger-ui-express';
 import sequelize from './config/database';
 import { setupSocket } from './socket';
 import { getConfig } from './config/index';
@@ -14,6 +15,7 @@ import filesRoutes from './routes/files';
 import messagesRoutes from './routes/messages';
 import conversationsRoutes from './routes/conversations';
 import { cleanupDuplicateIndexes } from './utils/database';
+import { getSwaggerSpec } from './swagger';
 import './models';
 import { renderMOTD } from './utils/motd';
 
@@ -26,6 +28,15 @@ app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use('/uploads', express.static(path.resolve(__dirname, '../uploads')));
+
+// Swagger documentation routes
+app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(getSwaggerSpec()));
+app.get('/api/swagger.json', (_req, res) => {
+    res.setHeader('Content-Type', 'application/json');
+    res.send(getSwaggerSpec());
+});
+
+// API routes
 app.use('/api/auth', authRoutes);
 app.use('/api/users', usersRoutes);
 app.use('/api/friends', friendsRoutes);
@@ -62,6 +73,7 @@ function logServerAddresses(port: string | number) {
     for (const origin of lanOrigins) { // ...
     }
 }
+
 async function start() {
     try {
         console.log('Chatty: Starting server...');
@@ -86,6 +98,7 @@ async function start() {
     }
 }
 start();
+
 const scriptDir = __dirname;
 const workingDir = process.cwd();
 console.log(`

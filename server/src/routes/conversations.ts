@@ -5,6 +5,74 @@ import { authMiddleware, AuthRequest } from '../middleware/auth';
 
 const router: Router = Router();
 router.use(authMiddleware);
+
+/**
+ * @swagger
+ * /conversations:
+ *   get:
+ *     summary: Get all conversations
+ *     description: Retrieves all conversations for the authenticated user with the latest message and peer details
+ *     tags:
+ *       - Conversations
+ *     security:
+ *       - BearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Conversations retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: success
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       id:
+ *                         type: integer
+ *                       user_id:
+ *                         type: integer
+ *                       peer_id:
+ *                         type: integer
+ *                       updated_at:
+ *                         type: string
+ *                         format: date-time
+ *                       peer:
+ *                         type: object
+ *                         properties:
+ *                           id:
+ *                             type: integer
+ *                           username:
+ *                             type: string
+ *                           display_name:
+ *                             type: string
+ *                           avatar_locator:
+ *                             type: string
+ *                       lastMessage:
+ *                         type: object
+ *                         properties:
+ *                           id:
+ *                             type: integer
+ *                           sender_id:
+ *                             type: integer
+ *                           type:
+ *                             type: string
+ *                           content:
+ *                             type: string
+ *                           file_name:
+ *                             type: string
+ *                           is_recalled:
+ *                             type: boolean
+ *                           created_at:
+ *                             type: string
+ *                             format: date-time
+ *       500:
+ *         description: Internal server error
+ */
 router.get('/', async (req: AuthRequest, res: Response) => {
     try {
         const conversations = await Conversation.findAll({

@@ -9,6 +9,59 @@ import { emitToUser, isUserOnline } from '../socket';
 
 const router: Router = Router();
 router.use(authMiddleware);
+
+/**
+ * @swagger
+ * /friends/request:
+ *   post:
+ *     summary: Send a friend request
+ *     description: Sends a friend request to another user. Detects mutual requests and auto-accepts.
+ *     tags:
+ *       - Friends
+ *     security:
+ *       - BearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - to_user_id
+ *             properties:
+ *               to_user_id:
+ *                 type: integer
+ *     responses:
+ *       201:
+ *         description: Friend request sent successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: success
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     id:
+ *                       type: integer
+ *                     message:
+ *                       type: string
+ *                     auto_accepted:
+ *                       type: boolean
+ *       400:
+ *         description: Invalid parameters
+ *       403:
+ *         description: Unable to send request (blocked or blocks you)
+ *       404:
+ *         description: Target user not found
+ *       409:
+ *         description: Already friends or request already exists
+ *       500:
+ *         description: Internal server error
+ */
 router.post('/request', async (req: AuthRequest, res: Response) => {
     try {
         const { to_user_id } = req.body;
@@ -85,6 +138,75 @@ router.post('/request', async (req: AuthRequest, res: Response) => {
         return error(res, 'SERVER_ERROR', 'Internal server error', 500);
     }
 });
+
+/**
+ * @swagger
+ * /friends/requests:
+ *   get:
+ *     summary: Get friend requests
+ *     description: Retrieves pending friend requests (sent or received)
+ *     tags:
+ *       - Friends
+ *     security:
+ *       - BearerAuth: []
+ *     parameters:
+ *       - name: type
+ *         in: query
+ *         required: true
+ *         schema:
+ *           type: string
+ *           enum: [sent, received]
+ *     responses:
+ *       200:
+ *         description: Friend requests retrieved
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: success
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       id:
+ *                         type: integer
+ *                       from_user_id:
+ *                         type: integer
+ *                       to_user_id:
+ *                         type: integer
+ *                       status:
+ *                         type: string
+ *                       fromUser:
+ *                         type: object
+ *                         properties:
+ *                           id:
+ *                             type: integer
+ *                           username:
+ *                             type: string
+ *                           display_name:
+ *                             type: string
+ *                           avatar_locator:
+ *                             type: string
+ *                       toUser:
+ *                         type: object
+ *                         properties:
+ *                           id:
+ *                             type: integer
+ *                           username:
+ *                             type: string
+ *                           display_name:
+ *                             type: string
+ *                           avatar_locator:
+ *                             type: string
+ *       400:
+ *         description: Invalid type parameter
+ *       500:
+ *         description: Internal server error
+ */
 router.get('/requests', async (req: AuthRequest, res: Response) => {
     try {
         const type = req.query.type as string;
@@ -119,6 +241,62 @@ router.get('/requests', async (req: AuthRequest, res: Response) => {
         return error(res, 'SERVER_ERROR', 'Internal server error', 500);
     }
 });
+
+/**
+ * @swagger
+ * /friends/request/{id}:
+ *   put:
+ *     summary: Accept or reject a friend request
+ *     description: Handles a pending friend request by accepting or rejecting it
+ *     tags:
+ *       - Friends
+ *     security:
+ *       - BearerAuth: []
+ *     parameters:
+ *       - name: id
+ *         in: path
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - status
+ *             properties:
+ *               status:
+ *                 type: string
+ *                 enum: [accepted, rejected]
+ *     responses:
+ *       200:
+ *         description: Request handled successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: success
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     message:
+ *                       type: string
+ *       400:
+ *         description: Invalid status parameter
+ *       403:
+ *         description: Cannot handle this request (not the recipient)
+ *       404:
+ *         description: Friend request not found
+ *       409:
+ *         description: Request already handled
+ *       500:
+ *         description: Internal server error
+ */
 router.put('/request/:id', async (req: AuthRequest, res: Response) => {
     try {
         const requestId = parseInt(req.params.id);
@@ -157,6 +335,46 @@ router.put('/request/:id', async (req: AuthRequest, res: Response) => {
         return error(res, 'SERVER_ERROR', 'Internal server error', 500);
     }
 });
+
+/**
+ * @swagger
+ * /friends:
+ *   get:
+ *     summary: Get friends list
+ *     description: Retrieves all friends with their online status
+ *     tags:
+ *       - Friends
+ *     security:
+ *       - BearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Friends list retrieved
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: success
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       id:
+ *                         type: integer
+ *                       username:
+ *                         type: string
+ *                       display_name:
+ *                         type: string
+ *                       avatar_locator:
+ *                         type: string
+ *                       is_online:
+ *                         type: boolean
+ *       500:
+ *         description: Internal server error
+ */
 router.get('/', async (req: AuthRequest, res: Response) => {
     try {
         const contacts = await Contact.findAll({
@@ -182,6 +400,46 @@ router.get('/', async (req: AuthRequest, res: Response) => {
         return error(res, 'SERVER_ERROR', 'Internal server error', 500);
     }
 });
+
+/**
+ * @swagger
+ * /friends/{userId}:
+ *   delete:
+ *     summary: Remove a friend
+ *     description: Removes a user from the friends list
+ *     tags:
+ *       - Friends
+ *     security:
+ *       - BearerAuth: []
+ *     parameters:
+ *       - name: userId
+ *         in: path
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: Friend removed successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: success
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     message:
+ *                       type: string
+ *       400:
+ *         description: Invalid user ID
+ *       404:
+ *         description: Contact not found
+ *       500:
+ *         description: Internal server error
+ */
 router.delete('/:userId', async (req: AuthRequest, res: Response) => {
     try {
         const friendUserId = parseInt(req.params.userId);
