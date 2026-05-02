@@ -1,0 +1,115 @@
+<mxfile host="Electron" agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) draw.io/24.7.8 Chrome/128.0.6613.36 Electron/32.0.1 Safari/537.36" version="24.7.8">
+  <diagram id="uml-component" name="NodeChatty Backend Components">
+    <mxGraphModel dx="1420" dy="872" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1400" pageHeight="900" background="#ffffff" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="http-client" value="HTTP Client" style="ellipse;whiteSpace=wrap;html=1;fontSize=11;align=center" parent="1" vertex="1">
+          <mxGeometry x="960" y="70" width="100" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="ws-client" value="WebSocket Client" style="ellipse;whiteSpace=wrap;html=1;fontSize=11;align=center" parent="1" vertex="1">
+          <mxGeometry x="960" y="400" width="100" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="express" value="&lt;b&gt;&lt;i&gt;Server&lt;/i&gt;&lt;/b&gt;" style="shape=component;align=center;fontSize=12;html=1" parent="1" vertex="1">
+          <mxGeometry x="950" y="190" width="120" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="routes" value="Route&lt;div&gt;Handlers&lt;/div&gt;&lt;div&gt;(Controller)&lt;/div&gt;" style="shape=component;align=right;fontSize=11;html=1" parent="1" vertex="1">
+          <mxGeometry x="800" y="297.5" width="100" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="auth-component" value="auth.ts" style="rounded=1;fontSize=10;html=1;align=center" parent="1" vertex="1">
+          <mxGeometry x="280" y="30" width="80" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="users-component" value="users.ts" style="rounded=1;fontSize=10;html=1;align=center" parent="1" vertex="1">
+          <mxGeometry x="370" y="30" width="80" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="friends-component" value="friends.ts" style="rounded=1;fontSize=10;html=1;align=center" parent="1" vertex="1">
+          <mxGeometry x="460" y="30" width="80" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="messages-component" value="messages.ts" style="rounded=1;fontSize=10;html=1;align=center" parent="1" vertex="1">
+          <mxGeometry x="550" y="30" width="80" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="files-component" value="files.ts" style="rounded=1;fontSize=10;html=1;align=center" parent="1" vertex="1">
+          <mxGeometry x="640" y="30" width="80" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="middleware" value="Middleware" style="shape=component;align=right;fontSize=11;html=1" parent="1" vertex="1">
+          <mxGeometry x="800" y="150" width="100" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="utils" value="Services&lt;div&gt;(Utilities)&lt;/div&gt;" style="shape=component;align=right;fontSize=11;html=1" parent="1" vertex="1">
+          <mxGeometry x="800" y="400" width="100" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="VBt7DZq2nXNXbP15rSHc-1" style="edgeStyle=none;curved=1;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;fontSize=12;startSize=8;endSize=8;endArrow=none;endFill=0;dashed=1;startArrow=open;startFill=0;" edge="1" parent="1" source="addcode-util" target="global">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="addcode-util" value="AddCode.ts" style="rounded=1;fontSize=10;html=1;align=center" parent="1" vertex="1">
+          <mxGeometry x="970" y="510" width="80" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="response-util" value="response.ts" style="rounded=1;fontSize=10;html=1;align=center" parent="1" vertex="1">
+          <mxGeometry x="350" y="170" width="80" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="socket" value="Socket&lt;div&gt;Handler&lt;/div&gt;&lt;div&gt;(ChatHub)&lt;/div&gt;" style="shape=component;align=right;fontSize=11;html=1" parent="1" vertex="1">
+          <mxGeometry x="960" y="297.5" width="100" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="database" value="Models&lt;div&gt;(DB ORM)&lt;/div&gt;" style="shape=component;align=right;fontSize=11;html=1" parent="1" vertex="1">
+          <mxGeometry x="600" y="400" width="120" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="user-model" value="User" style="rounded=1;fontSize=9;html=1;align=center" parent="1" vertex="1">
+          <mxGeometry x="50" y="310" width="60" height="35" as="geometry" />
+        </mxCell>
+        <mxCell id="contact-model" value="Contact" style="rounded=1;fontSize=9;html=1;align=center" parent="1" vertex="1">
+          <mxGeometry x="115" y="310" width="60" height="35" as="geometry" />
+        </mxCell>
+        <mxCell id="friendrequest-model" value="FriendRequest" style="rounded=1;fontSize=9;html=1;align=center" parent="1" vertex="1">
+          <mxGeometry x="970" y="570" width="80" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="datastorage" value="Data&lt;div&gt;Storage&lt;/div&gt;&lt;div&gt;(DB)&lt;/div&gt;" style="shape=component;align=right;fontSize=11;html=1" parent="1" vertex="1">
+          <mxGeometry x="600" y="530" width="120" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="filestorage" value="File&lt;div&gt;System&lt;/div&gt;" style="shape=component;align=right;fontSize=11;html=1" parent="1" vertex="1">
+          <mxGeometry x="620" y="297.5" width="100" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="global" value="Global&lt;div&gt;Scope&lt;/div&gt;" style="shape=component;align=right;fontSize=11;html=1" parent="1" vertex="1">
+          <mxGeometry x="800" y="530" width="100" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="dep1" style="rounded=0;orthogonalLoop=1;jettySize=auto;html=1;dashed=1;dashPattern=5 5;endArrow=open;fontSize=10" parent="1" source="http-client" target="express" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="dep2" style="rounded=0;orthogonalLoop=1;jettySize=auto;html=1;dashed=1;dashPattern=5 5;endArrow=open;fontSize=10" parent="1" source="ws-client" target="socket" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="dep3" style="rounded=0;orthogonalLoop=1;jettySize=auto;html=1;dashed=1;dashPattern=5 5;endArrow=open;fontSize=10" parent="1" source="express" target="routes" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="dep4" style="rounded=0;orthogonalLoop=1;jettySize=auto;html=1;dashed=1;dashPattern=5 5;endArrow=open;fontSize=10" parent="1" source="routes" target="middleware" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="dep5" style="rounded=0;orthogonalLoop=1;jettySize=auto;html=1;dashed=1;dashPattern=5 5;endArrow=open;fontSize=10" parent="1" source="routes" target="utils" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="dep6" style="rounded=0;orthogonalLoop=1;jettySize=auto;html=1;dashed=1;dashPattern=5 5;endArrow=open;fontSize=10" parent="1" source="routes" target="socket" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="dep7" style="rounded=0;orthogonalLoop=1;jettySize=auto;html=1;dashed=1;dashPattern=5 5;endArrow=open;fontSize=10" parent="1" source="express" target="socket" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="dep8" style="rounded=0;orthogonalLoop=1;jettySize=auto;html=1;dashed=1;dashPattern=5 5;endArrow=open;fontSize=10" parent="1" source="routes" target="database" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="dep9" style="rounded=0;orthogonalLoop=1;jettySize=auto;html=1;dashed=1;dashPattern=5 5;endArrow=open;fontSize=10" parent="1" source="routes" target="filestorage" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="dep10" style="rounded=0;orthogonalLoop=1;jettySize=auto;html=1;dashed=1;dashPattern=5 5;endArrow=open;fontSize=10" parent="1" source="utils" target="global" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="dep11" style="rounded=0;orthogonalLoop=1;jettySize=auto;html=1;dashed=1;dashPattern=5 5;endArrow=open;fontSize=10" parent="1" source="database" target="datastorage" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="VBt7DZq2nXNXbP15rSHc-2" style="edgeStyle=none;curved=1;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;fontSize=12;startSize=8;endSize=8;endArrow=none;endFill=0;dashed=1;startArrow=open;startFill=0;" edge="1" parent="1" source="friendrequest-model" target="global">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="980" y="540" as="sourcePoint" />
+            <mxPoint x="910" y="570" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

@@ -49,3 +49,5 @@ yarn-error.*
 llm.*
 
 */_ignore
+
+.$*
