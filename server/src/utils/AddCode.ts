@@ -38,14 +38,16 @@ export default class AddCode {
         while (GlobalScope.GeneratedCodeNumbers.has(newCode.code))
             newCode.genCode();
 
+        const oldEntry = GlobalScope.AddCodePool.get(forUser);
+        if (oldEntry && oldEntry.isValid)
+            GlobalScope.GeneratedCodeNumbers.delete(oldEntry.code);
+        // LLM CHECK:
+        // should remove old first and then push new.
+
         if (pushAlso) {
             GlobalScope.AddCodePool.set(forUser, newCode);
             GlobalScope.GeneratedCodeNumbers.add(newCode.code);
         }
-
-        const oldEntry = GlobalScope.AddCodePool.get(forUser);
-        if (oldEntry && oldEntry.isValid)
-            GlobalScope.GeneratedCodeNumbers.delete(oldEntry.code);
 
         return newCode;
     }

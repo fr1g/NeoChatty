@@ -2,6 +2,7 @@ import { DataTypes, Model, Optional } from 'sequelize';
 import sequelize from '../config/database';
 interface UserAttributes {
     id: number;
+    disabled?: boolean;
     username: string;
     display_name: string;
     password_hash: string;
@@ -15,6 +16,7 @@ interface UserCreationAttributes extends Optional<UserAttributes, 'id' | 'avatar
 }
 class User extends Model<UserAttributes, UserCreationAttributes> implements UserAttributes {
     declare id: number;
+    declare disabled?: boolean | undefined;
     declare username: string;
     declare display_name: string;
     declare password_hash: string;
@@ -29,6 +31,11 @@ User.init({
         type: DataTypes.INTEGER.UNSIGNED,
         autoIncrement: true,
         primaryKey: true,
+    },
+    disabled: {
+        type: DataTypes.BOOLEAN,
+        allowNull: true,
+        defaultValue: false,
     },
     username: {
         type: DataTypes.STRING(50),

@@ -78,3 +78,7 @@ export type UploadResponse = ApiResponse<{
     file_size: number;
     mime_type: string;
 }>;
+export type AddCodeResponse = ApiResponse<{
+    code: number;
+    expireAt: number;
+}>;

@@ -1,10 +1,11 @@
-import { Router, Response } from 'express';
+import express, { Router, Response } from 'express';
 import { Op } from 'sequelize';
 import { User, FriendRequest, Contact, Block } from '../models';
 import { success, error } from '../utils/response';
 import { authMiddleware, AuthRequest } from '../middleware/auth';
 import sequelize from '../config/database';
 import { emitToUser, isUserOnline } from '../socket';
+import AddCode from '../utils/AddCode';
 
 
 const router: Router = Router();
@@ -464,4 +465,295 @@ router.delete('/:userId', async (req: AuthRequest, res: Response) => {
         return error(res, 'SERVER_ERROR', 'Internal server error', 500);
     }
 });
+
+/**
+ * @swagger
+ * /friends/addcode:
+ *   get:
+ *     summary: Generate a new add code
+ *     description: Generates a new 8-digit verification code for adding friends. Automatically invalidates any previous code for this user.
+ *     tags:
+ *       - Friends
+ *     security:
+ *       - BearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Code generated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: success
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     code:
+ *                       type: integer
+ *                       description: 8-digit verification code
+ *                     expireAt:
+ *                       type: integer
+ *                       description: Unix timestamp when code expires
+ *       500:
+ *         description: Internal server error
+ */
+router.get('/addcode', async (req: AuthRequest, res: Response) => {
+    try {
+        const userId = String(req.userId!);
+        const addCode = AddCode.createCode(userId, true);
+        return success(res, {
+            code: addCode.code,
+            expireAt: addCode.expireAt,
+        });
+    }
+    catch (err) {
+        return error(res, 'SERVER_ERROR', 'Internal server error', 500);
+    }
+});
+
+/**
+ * @swagger
+ * /friends/addcode/{code}:
+ *   post:
+ *     summary: Verify add code and get target user
+ *     description: Verifies if an add code is valid and returns the target user information. Request body must be raw text containing target user ID.
+ *     tags:
+ *       - Friends
+ *     security:
+ *       - BearerAuth: []
+ *     parameters:
+ *       - name: code
+ *         in: path
+ *         required: true
+ *         schema:
+ *           type: integer
+ *           description: 8-digit verification code
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         text/plain:
+ *           schema:
+ *             type: string
+ *             description: Target user ID as raw text integer
+ *     responses:
+ *       200:
+ *         description: Code verified, returns target user
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: success
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     id:
+ *                       type: integer
+ *                     username:
+ *                       type: string
+ *                     display_name:
+ *                       type: string
+ *                     avatar_locator:
+ *                       type: string
+ *       400:
+ *         description: Invalid code format or invalid target user ID
+ *       401:
+ *         description: Code invalid, expired, or mismatch with target user
+ *       404:
+ *         description: Target user not found
+ *       500:
+ *         description: Internal server error
+ */
+router.post('/addcode/:code', express.text(), async (req: AuthRequest, res: Response) => {
+    try {
+        const code = parseInt(req.params.code);
+        const targetUserIdStr = String(req.body).trim();
+        const targetUserId = parseInt(targetUserIdStr);
+
+        if (isNaN(code)) {
+            return error(res, 'INVALID_PARAMS', 'Invalid code format', 400);
+        }
+        if (isNaN(targetUserId)) {
+            return error(res, 'INVALID_PARAMS', 'Invalid target user ID format', 400);
+        }
+
+        const targetUserIdString = String(targetUserId);
+        if (!AddCode.isValid(targetUserIdString, code)) {
+            return error(res, 'UNAUTHORIZED', 'Code is invalid, expired, or does not match', 401);
+        }
+
+        const targetUser = await User.findByPk(targetUserId, {
+            attributes: ['id', 'username', 'display_name', 'avatar_locator'],
+        });
+        if (!targetUser) {
+            return error(res, 'NOT_FOUND', 'Target user not found', 404);
+        }
+
+        return success(res, targetUser);
+    }
+    catch (err) {
+        return error(res, 'SERVER_ERROR', 'Internal server error', 500);
+    }
+});
+
+/**
+ * @swagger
+ * /friends/addcode/{code}:
+ *   put:
+ *     summary: Verify code and send friend request
+ *     description: Verifies add code and sends friend request to target user. Code is consumed after successful verification. Ignores privacy settings.
+ *     tags:
+ *       - Friends
+ *     security:
+ *       - BearerAuth: []
+ *     parameters:
+ *       - name: code
+ *         in: path
+ *         required: true
+ *         schema:
+ *           type: integer
+ *           description: 8-digit verification code
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         text/plain:
+ *           schema:
+ *             type: string
+ *             description: Target user ID as raw text integer
+ *     responses:
+ *       201:
+ *         description: Friend request sent successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: success
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     id:
+ *                       type: integer
+ *                     message:
+ *                       type: string
+ *                     auto_accepted:
+ *                       type: boolean
+ *       400:
+ *         description: Invalid code or target user ID format
+ *       401:
+ *         description: Code is invalid, expired, or does not match
+ *       403:
+ *         description: Unable to send request (blocked or blocks you, or trying to add self)
+ *       404:
+ *         description: Target user not found
+ *       409:
+ *         description: Already friends or request already exists
+ *       500:
+ *         description: Internal server error
+ */
+router.put('/addcode/:code', express.text(), async (req: AuthRequest, res: Response) => {
+    try {
+        const code = parseInt(req.params.code);
+        const targetUserIdStr = String(req.body).trim();
+        const targetUserId = parseInt(targetUserIdStr);
+        const fromUserId = req.userId!;
+
+        if (isNaN(code)) {
+            return error(res, 'INVALID_PARAMS', 'Invalid code format', 400);
+        }
+        if (isNaN(targetUserId)) {
+            return error(res, 'INVALID_PARAMS', 'Invalid target user ID format', 400);
+        }
+
+        const targetUserIdString = String(targetUserId);
+        if (!AddCode.isValid(targetUserIdString, code)) {
+            return error(res, 'UNAUTHORIZED', 'Code is invalid, expired, or does not match', 401);
+        }
+
+        // Consume the code
+        AddCode.consume(targetUserIdString, code);
+
+        if (targetUserId === fromUserId) {
+            return error(res, 'FORBIDDEN', 'You cannot add yourself as a friend', 403);
+        }
+
+        const targetUser = await User.findByPk(targetUserId);
+        if (!targetUser) {
+            return error(res, 'NOT_FOUND', 'Target user not found', 404);
+        }
+
+        const blocked = await Block.findOne({
+            where: {
+                [Op.or]: [
+                    { user_id: fromUserId, blocked_user_id: targetUserId },
+                    { user_id: targetUserId, blocked_user_id: fromUserId },
+                ],
+            },
+        });
+        if (blocked) {
+            return error(res, 'FORBIDDEN', 'Unable to send friend request', 403);
+        }
+
+        const existingContact = await Contact.findOne({
+            where: { user_id: fromUserId, friend_id: targetUserId },
+        });
+        if (existingContact) {
+            return error(res, 'CONFLICT', 'You are already friends', 409);
+        }
+
+        const existingRequest = await FriendRequest.findOne({
+            where: { from_user_id: fromUserId, to_user_id: targetUserId, status: 'pending' },
+        });
+        if (existingRequest) {
+            return error(res, 'CONFLICT', 'A pending friend request already exists', 409);
+        }
+
+        // Check for reverse request (mutual request) - skip privacy settings check for add code
+        const reverseRequest = await FriendRequest.findOne({
+            where: { from_user_id: targetUserId, to_user_id: fromUserId, status: 'pending' },
+        });
+        if (reverseRequest) {
+            await sequelize.transaction(async (t) => {
+                await reverseRequest.update({ status: 'accepted' }, { transaction: t });
+                await FriendRequest.create({ from_user_id: fromUserId, to_user_id: targetUserId, status: 'accepted' }, { transaction: t });
+                await Contact.bulkCreate([
+                    { user_id: fromUserId, friend_id: targetUserId },
+                    { user_id: targetUserId, friend_id: fromUserId },
+                ], { transaction: t });
+            });
+            if (isUserOnline(fromUserId)) {
+                emitToUser(fromUserId, 'friend:accepted', { userId: targetUserId });
+            }
+            if (isUserOnline(targetUserId)) {
+                emitToUser(targetUserId, 'friend:accepted', { userId: fromUserId });
+            }
+            return success(res, { message: 'Mutual requests detected. You are now friends automatically', auto_accepted: true }, 201);
+        }
+
+        const request = await FriendRequest.create({
+            from_user_id: fromUserId,
+            to_user_id: targetUserId,
+        });
+        if (isUserOnline(targetUserId)) {
+            const fromUser = await User.findByPk(fromUserId, {
+                attributes: ['id', 'username', 'display_name', 'avatar_locator'],
+            });
+            emitToUser(targetUserId, 'friend:request', {
+                id: request.id,
+                fromUser,
+            });
+        }
+        return success(res, { id: request.id, message: 'Friend request sent', auto_accepted: false }, 201);
+    }
+    catch (err) {
+        return error(res, 'SERVER_ERROR', 'Internal server error', 500);
+    }
+});
+
 export default router;

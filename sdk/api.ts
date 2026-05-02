@@ -90,6 +90,19 @@ export function constructClient(chatty: ChattyClient) {
         deleteFriend(userId: number) {
             return client.delete<ApiResponse<null>>(`/friends/${userId}`);
         },
+        generateAddCode() {
+            return client.get<ApiResponse<{ code: number; expireAt: number }>>('/friends/addcode');
+        },
+        verifyAddCode(code: number, targetUserId: number) {
+            return client.post<ApiResponse<User>>(`/friends/addcode/${code}`, String(targetUserId), {
+                headers: { 'Content-Type': 'text/plain' },
+            });
+        },
+        sendFriendRequestWithCode(code: number, targetUserId: number) {
+            return client.put<ApiResponse<{ id: number; message: string; auto_accepted: boolean }>>(`/friends/addcode/${code}`, String(targetUserId), {
+                headers: { 'Content-Type': 'text/plain' },
+            });
+        },
     };
 
     const blocks = {
