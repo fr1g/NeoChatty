@@ -47,3 +47,5 @@ yarn-error.*
 /uploads
 
 llm.*
+
+*/_ignore
