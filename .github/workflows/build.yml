@@ -1,0 +1,302 @@
+name: Build All Targets
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+jobs:
+  check-trigger:
+    name: Check Build Trigger
+    runs-on: ubuntu-latest
+    outputs:
+      should_build: ${{ steps.check.outputs.should_build }}
+    steps:
+      - name: Check if commit message starts with [run-build]
+        id: check
+        run: |
+          message="${{ github.event.head_commit.message }}"
+          if [[ "$message" == \[run-build\]* ]]; then
+            echo "should_build=true" >> $GITHUB_OUTPUT
+          else
+            echo "should_build=false" >> $GITHUB_OUTPUT
+          fi
+
+  build-sdk:
+    name: Build SDK
+    runs-on: ubuntu-latest
+    needs: check-trigger
+    if: needs.check-trigger.outputs.should_build == 'true'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 8
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "18"
+          cache: "pnpm"
+          cache-dependency-path: "sdk/pnpm-lock.yaml"
+
+      - name: Install dependencies
+        working-directory: sdk
+        run: pnpm install
+
+      - name: Build SDK
+        working-directory: sdk
+        run: pnpm run build
+
+      - name: Upload SDK artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: sdk-dist
+          path: sdk/dist/
+
+  build-webapp:
+    name: Build WebApp
+    runs-on: ubuntu-latest
+    needs: check-trigger
+    if: needs.check-trigger.outputs.should_build == 'true'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 8
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "18"
+          cache: "pnpm"
+          cache-dependency-path: "webapp/pnpm-lock.yaml"
+
+      - name: Install dependencies
+        working-directory: webapp
+        run: pnpm install
+
+      - name: Build WebApp
+        working-directory: webapp
+        run: pnpm run build
+
+      - name: Upload WebApp artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: webapp-dist
+          path: webapp/dist/
+
+  build-stager:
+    name: Build ChattyStager
+    runs-on: ubuntu-latest
+    needs: check-trigger
+    if: needs.check-trigger.outputs.should_build == 'true'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup .NET SDK 10.0
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: Restore NuGet packages
+        working-directory: ChattyStager
+        run: dotnet restore
+
+      - name: Publish ChattyStager (Framework-Dependent)
+        working-directory: ChattyStager
+        run: dotnet publish -c Release --no-restore -o ./bin/Release/publish
+
+      - name: Upload Stager artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: stager-build
+          path: ChattyStager/bin/Release/publish/
+
+  build-app-apk:
+    name: Build Expo APK
+    runs-on: ubuntu-latest
+    needs: check-trigger
+    if: needs.check-trigger.outputs.should_build == 'true'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Java JDK
+        uses: actions/setup-java@v4
+        with:
+          java-version: "17"
+          distribution: "temurin"
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "18"
+
+      - name: Install app dependencies
+        working-directory: app
+        run: npm install
+
+      - name: Check Expo prebuild status
+        working-directory: app
+        run: |
+          if [ ! -d "android" ]; then
+            echo "Running Expo prebuild for Android..."
+            npx expo prebuild --platform android --clean
+          else
+            echo "Android prebuilt directory found, skipping prebuild"
+          fi
+
+      - name: Build APK using Gradle
+        working-directory: app/android
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleRelease
+
+      - name: Find and upload APK
+        run: |
+          apk_path=$(find app/android -name "*.apk" -type f | grep -i release | head -1)
+          if [ -f "$apk_path" ]; then
+            cp "$apk_path" app/app-release.apk
+          else
+            echo "Error: APK not found"
+            find app/android -name "*.apk" -type f
+            exit 1
+          fi
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-apk
+          path: app/app-release.apk
+
+  build-app-ipa:
+    name: Build Expo IPA (Unsigned)
+    runs-on: macos-latest
+    needs: check-trigger
+    if: needs.check-trigger.outputs.should_build == 'true'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "18"
+
+      - name: Install app dependencies
+        working-directory: app
+        run: npm install
+
+      - name: Check Expo prebuild status
+        working-directory: app
+        run: |
+          if [ ! -d "ios" ] || [ ! -d "android" ]; then
+            echo "Running Expo prebuild..."
+            npx expo prebuild --clean
+          else
+            echo "Prebuilt directories found, skipping prebuild"
+          fi
+
+      - name: Install CocoaPods dependencies
+        working-directory: app/ios
+        run: pod install
+
+      - name: Build iOS app (unsigned)
+        working-directory: app/ios
+        run: |
+          # Get the Xcode project/workspace name
+          project_name=$(ls -d *.xcodeproj 2>/dev/null | head -1 | sed 's/.xcodeproj//')
+          workspace_name=$(ls -d *.xcworkspace 2>/dev/null | head -1)
+
+          if [ -z "$workspace_name" ]; then
+            echo "Using project: $project_name"
+            xcodebuild clean -project "$project_name.xcodeproj" -scheme "$project_name"
+            xcodebuild build \
+              -project "$project_name.xcodeproj" \
+              -scheme "$project_name" \
+              -configuration Release \
+              -derivedDataPath build \
+              CODE_SIGN_IDENTITY="" \
+              CODE_SIGNING_REQUIRED=NO \
+              CODE_SIGNING_ALLOWED=NO
+            app_path="build/Build/Products/Release-iphoneos/$project_name.app"
+          else
+            echo "Using workspace: $workspace_name"
+            project_name=$(echo "$workspace_name" | sed 's/.xcworkspace//')
+            xcodebuild clean -workspace "$workspace_name" -scheme "$project_name"
+            xcodebuild build \
+              -workspace "$workspace_name" \
+              -scheme "$project_name" \
+              -configuration Release \
+              -derivedDataPath build \
+              CODE_SIGN_IDENTITY="" \
+              CODE_SIGNING_REQUIRED=NO \
+              CODE_SIGNING_ALLOWED=NO
+            app_path="build/Build/Products/Release-iphoneos/$project_name.app"
+          fi
+
+          # Verify the app was built
+          if [ -d "$app_path" ]; then
+            echo "App built successfully at: $app_path"
+          else
+            echo "Error: App not found at $app_path"
+            find build -name "*.app" -type d
+            exit 1
+          fi
+
+      - name: Package IPA
+        working-directory: app/ios
+        run: |
+          app_path=$(find build/Build/Products/Release-iphoneos -name "*.app" -type d | head -1)
+          mkdir -p Payload
+          cp -r "$app_path" Payload/
+          zip -r app.ipa Payload
+          mv app.ipa ../app.ipa
+          rm -rf Payload
+
+      - name: Upload IPA artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-ipa-unsigned
+          path: app/app.ipa
+
+  build-summary:
+    name: Build Summary
+    runs-on: ubuntu-latest
+    needs:
+      [
+        check-trigger,
+        build-sdk,
+        build-webapp,
+        build-stager,
+        build-app-apk,
+        build-app-ipa,
+      ]
+    if: always() && needs.check-trigger.outputs.should_build == 'true'
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: build-artifacts
+
+      - name: List artifacts
+        run: |
+          echo "=== Build Artifacts Summary ==="
+          find build-artifacts -type f -exec ls -lh {} \;
+
+      - name: Display build status
+        run: |
+          echo "Build triggered by commit message: ${{ github.event.head_commit.message }}"
+          echo "All builds completed!"
