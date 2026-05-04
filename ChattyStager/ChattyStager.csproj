@@ -16,10 +16,56 @@
         <ExcludeFromSingleFile>true</ExcludeFromSingleFile>
         <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
       </Content>
+      <Content Remove="_ignore\**" />
     </ItemGroup>
 
     <ItemGroup>
       <Folder Include="wwwroot\stager\" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <Compile Remove="_ignore\**" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <EmbeddedResource Remove="_ignore\**" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <None Remove="_ignore\**" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <_ContentIncludedByDefault Remove="_ignore\appsettings.Development.json" />
+      <_ContentIncludedByDefault Remove="_ignore\appsettings.json" />
+      <_ContentIncludedByDefault Remove="_ignore\obj\ChattyStager.csproj.nuget.dgspec.json" />
+      <_ContentIncludedByDefault Remove="_ignore\obj\Debug\net10.0\ChattyStager.sourcelink.json" />
+      <_ContentIncludedByDefault Remove="_ignore\obj\Debug\net10.0\rbcswa.dswa.cache.json" />
+      <_ContentIncludedByDefault Remove="_ignore\obj\Debug\net10.0\rjimswa.dswa.cache.json" />
+      <_ContentIncludedByDefault Remove="_ignore\obj\Debug\net10.0\rjsmcshtml.dswa.cache.json" />
+      <_ContentIncludedByDefault Remove="_ignore\obj\Debug\net10.0\rjsmrazor.dswa.cache.json" />
+      <_ContentIncludedByDefault Remove="_ignore\obj\Debug\net10.0\rpswa.dswa.cache.json" />
+      <_ContentIncludedByDefault Remove="_ignore\obj\Debug\net10.0\staticwebassets.build.endpoints.json" />
+      <_ContentIncludedByDefault Remove="_ignore\obj\Debug\net10.0\staticwebassets.build.json" />
+      <_ContentIncludedByDefault Remove="_ignore\obj\Debug\net10.0\staticwebassets.development.json" />
+      <_ContentIncludedByDefault Remove="_ignore\obj\project.assets.json" />
+      <_ContentIncludedByDefault Remove="_ignore\obj\project.packagespec.json" />
+      <_ContentIncludedByDefault Remove="_ignore\Properties\launchSettings.json" />
+      <_ContentIncludedByDefault Remove="_ignore\Components\App.razor" />
+      <_ContentIncludedByDefault Remove="_ignore\Components\Layout\MainLayout.razor" />
+      <_ContentIncludedByDefault Remove="_ignore\Components\Layout\NavMenu.razor" />
+      <_ContentIncludedByDefault Remove="_ignore\Components\Layout\ReconnectModal.razor" />
+      <_ContentIncludedByDefault Remove="_ignore\Components\Pages\Error.razor" />
+      <_ContentIncludedByDefault Remove="_ignore\Components\Pages\Home.razor" />
+      <_ContentIncludedByDefault Remove="_ignore\Components\Pages\ManageUser.razor" />
+      <_ContentIncludedByDefault Remove="_ignore\Components\Pages\NotFound.razor" />
+      <_ContentIncludedByDefault Remove="_ignore\Components\Pages\Settings.razor" />
+      <_ContentIncludedByDefault Remove="_ignore\Components\Pages\Setup.razor" />
+      <_ContentIncludedByDefault Remove="_ignore\Components\Parts\Button.razor" />
+      <_ContentIncludedByDefault Remove="_ignore\Components\Parts\DatabaseSettings.razor" />
+      <_ContentIncludedByDefault Remove="_ignore\Components\Parts\TODO__ResetVerification.razor" />
+      <_ContentIncludedByDefault Remove="_ignore\Components\Routes.razor" />
+      <_ContentIncludedByDefault Remove="_ignore\Components\_Imports.razor" />
     </ItemGroup>
 
 </Project>

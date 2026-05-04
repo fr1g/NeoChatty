@@ -1,5 +1,8 @@
 using ChattyStager.Components;
+using ChattyStager.Helpers;
 using TailwindBlazor;
+
+AppSettingsHelper.AppSettingsCheck();
 
 var builder = WebApplication.CreateBuilder(args);
 
