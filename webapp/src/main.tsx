@@ -275,6 +275,13 @@ function AuthGate({ side, setSide, mgr }: {
     mgr: ThemeHelper;
 }) {
     const { isLoggedIn, isLoading } = useAuth();
+
+    const [modal, setModal] = useState<ModalControl>({
+        info: new DialogInfo("", "notset", () => { }),
+        showing: false,
+        customChildren: undefined
+    });
+
     if (isLoading) {
         return (<div className='bg-slate-50 sm:bg-[#c3ccd8] dark:bg-slate-800 overflow-hidden sm:h-[80vh] 
                 min-h-75 w-full sm:max-w-125 block-shadow h-full relative p-3 sm:rounded-lg grid items-center justify-items-center'>
@@ -285,10 +292,19 @@ function AuthGate({ side, setSide, mgr }: {
         </div>);
     }
     if (!isLoggedIn) {
-        return (<div className='bg-slate-50 sm:bg-[#c3ccd8] dark:bg-slate-800 overflow-hidden sm:h-[80vh] 
+        return <ReusableFuncs.Provider value={{
+            modalUpdate: setModal
+        } as unknown as ReusableFuncsDef}>
+            <div className='bg-slate-50 sm:bg-[#c3ccd8] dark:bg-slate-800 overflow-hidden sm:h-[80vh] 
                 min-h-75 w-full sm:max-w-125 block-shadow h-full relative p-3 sm:rounded-lg grid items-center'>
-            <Auth />
-        </div>);
+                <Auth />
+                <Modal activated={modal.showing} info={modal.info} shut={() => {
+                    setModal(current => ({ ...current, showing: false }));
+                }}>
+                    {modal.customChildren}
+                </Modal>
+            </div>
+        </ReusableFuncs.Provider>;
     }
     return (<BrowserRouter>
         <div className='bg-slate-50 sm:bg-[#c3ccd8] dark:bg-slate-800 overflow-hidden sm:max-w-5xl sm:h-[80vh] 

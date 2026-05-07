@@ -1,7 +1,15 @@
-import { useState } from "react";
+import { useContext, useEffect, useState } from "react";
 import { LoginIcon, AssignmentCheckedIcon, UserAddIcon } from "tdesign-icons-react";
 import { useAuth } from "../../context/AuthContext";
+import { client } from "../../api";
+import { ChattyClientConfig } from "chatty-sdk";
+import type { DialogInfo } from "../../comps/Modal";
+import { ReusableFuncs, type ModalControl } from "../../main";
+import { IsNullOrEmpty } from "../../tools/Misc";
+
 export default function Auth() {
+    const inputClass = "w-full block-shadow h-10 rounded-lg px-3 interactive outline-0 bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 focus:border-[#1277d6] text-sm";
+
     const [page, setPage] = useState<"register" | "login">("login");
     const { login, register } = useAuth();
     const [username, setUsername] = useState('');
@@ -10,6 +18,8 @@ export default function Auth() {
     const [confirmPassword, setConfirmPassword] = useState('');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
+    const reuses = useContext(ReusableFuncs);
+
     const handleLogin = async () => {
         if (!username.trim() || !password.trim()) {
             setError('Please enter a username and password');
@@ -61,11 +71,61 @@ export default function Auth() {
             setLoading(false);
         }
     };
-    const inputClass = "w-full block-shadow h-10 rounded-lg px-3 interactive outline-0 bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 focus:border-[#1277d6] text-sm";
+
+    const handleChangeServer = (addr: string | undefined) => {
+        // set localStorage
+        let anotherServer;
+        if (IsNullOrEmpty(addr)) anotherServer = "rus.kami.su";
+        else anotherServer = addr as string;
+
+        const useHttps = window.location.protocol.toLowerCase().includes("https");
+        localStorage.setItem("chattyClientConfig", JSON.stringify(new ChattyClientConfig(useHttps, anotherServer)));
+
+        // refresh page to get new config
+        alert(`Need to refresh the app to load new config, which changes server to: ${anotherServer}`);
+        window.location.reload();
+
+    }
+
+    const [changeServerButtonHandler, setChangeServerButtonHandler] = useState<Function | null>(null);
+    const [toChangeServerAddress, setToChangeServerAddress] = useState<string | undefined>(undefined);
+
+    const changeServerModalContent = <div className="min-w-75">
+        <label className="text-sm text-slate-500 mb-1 block">Server Address. Leave blank if you wanna use default server.</label>
+        <input type="text" value={toChangeServerAddress} onChange={e => {
+            setToChangeServerAddress(_ => {
+                console.log(_, e.target.value);
+                return e.target.value;
+            });
+            localStorage.setItem("tochangescope", e.target.value);
+        }} placeholder={`Cur: ${0}`} className={inputClass} />
+    </div>
+
+    useEffect(() => {
+        if (reuses?.modalUpdate && !(changeServerButtonHandler)) {
+            setChangeServerButtonHandler(_ => () => reuses!.modalUpdate!({
+                info: {
+                    approveCall: () => {
+                        console.log(handleChangeServer);
+                        handleChangeServer(localStorage.getItem('tochangescope') ?? undefined);
+                    },
+                    approveOpt: "Confirm",
+                    title: "Change Server",
+                    content: '',
+                    danger: undefined
+                } as DialogInfo,
+                showing: true,
+                customChildren: changeServerModalContent
+            } as ModalControl)
+            );
+        }
+    }, [reuses]);
+
     if (page === 'register')
         return <div id="register" className="space-y-3 h-full flex flex-col">
             <h1 className="text-3xl font-bold">Register</h1>
             <p className="text-sm text-slate-500">Create a new account and join Chatty</p>
+            <p>Current server: {client.config.endpoint}</p>
 
             {error && <div className="bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 text-sm p-2 rounded-lg">{error}</div>}
 
@@ -102,6 +162,7 @@ export default function Auth() {
     return <div id="login" className="space-y-3 h-full flex flex-col">
         <h1 className="text-3xl font-bold">Log In</h1>
         <p className="text-sm text-slate-500">Welcome back. Log In to Chatty</p>
+        <p>Current server: {client.config.endpoint}</p>
 
         {error && <div className="bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 text-sm p-2 rounded-lg">{error}</div>}
 
@@ -116,14 +177,19 @@ export default function Auth() {
             </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-1.5 w-full sm:flex sm:justify-end">
-            <div onClick={() => { setPage("register"); setError(''); }} className="border-button flex gap-1 px-3! justify-center items-center cursor-pointer">
-                <UserAddIcon className="block" fillColor='transparent' strokeColor='currentColor' strokeWidth={2} />
-                <p>Register</p>
+        <div className="flex w-full">
+            <div onClick={() => changeServerButtonHandler?.()} className="border-button flex gap-1 px-3! justify-center items-center cursor-pointer">
+                <p>Change Server</p>
             </div>
-            <div onClick={handleLogin} className={`border-button flex gap-1 px-3! justify-center items-center cursor-pointer ${loading ? 'opacity-50 pointer-events-none' : ''}`}>
-                <AssignmentCheckedIcon className="block" fillColor='transparent' strokeColor='currentColor' strokeWidth={2} />
-                <p>{loading ? 'Signing in...' : 'Log In'}</p>
+            <div className="grid grid-cols-2 gap-1.5 grow ?w-full sm:flex sm:justify-end">
+                <div onClick={() => { setPage("register"); setError(''); }} className="border-button flex gap-1 px-3! justify-center items-center cursor-pointer">
+                    <UserAddIcon className="block" fillColor='transparent' strokeColor='currentColor' strokeWidth={2} />
+                    <p>Register</p>
+                </div>
+                <div onClick={handleLogin} className={`border-button flex gap-1 px-3! justify-center items-center cursor-pointer ${loading ? 'opacity-50 pointer-events-none' : ''}`}>
+                    <AssignmentCheckedIcon className="block" fillColor='transparent' strokeColor='currentColor' strokeWidth={2} />
+                    <p>{loading ? 'Signing in...' : 'Log In'}</p>
+                </div>
             </div>
         </div>
     </div>;
