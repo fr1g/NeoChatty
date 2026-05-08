@@ -111,7 +111,7 @@ export default function ProfileSettings() {
             </div>
 
 
-            <button onClick={save} disabled={saving} className="w-full h-11 rounded-lg bg-[#1277d6] text-white font-semibold text-base hover:bg-[#06a850] disabled:opacity-50 mt-2">
+            <button onClick={save} disabled={saving} className="w-full h-11 rounded-lg bg-[#1277d6] text-white! font-semibold text-base hover:bg-[#06a850] disabled:opacity-50 mt-2">
                 {saving ? 'Saving...' : 'Save All Changes'}
             </button>
         </div>

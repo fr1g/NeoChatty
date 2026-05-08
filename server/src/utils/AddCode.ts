@@ -27,6 +27,14 @@ export default class AddCode {
         return `${this.ofUser}`;
     }
 
+    static getCodeInfo(code: number): AddCode | null {
+        for (const entry of GlobalScope.AddCodePool.values()) {
+            if (entry.code === code)
+                return entry;
+        }
+        return null;
+    }
+
     static isValid(ofUser: string, code: number): boolean { // need to ensure the passed in user id is valid
         const find = GlobalScope.AddCodePool.get(ofUser);
         return (find?.isValid && find.expireAt > Date.now() && find.code === code) ?? false;

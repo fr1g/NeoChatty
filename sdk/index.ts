@@ -17,7 +17,9 @@ export {
     ApiResponse,
     AuthTokens,
     LoginResponse,
-    UploadResponse
+    UploadResponse,
+    AddCode,
+    AddCodeResponse
 } from './class';
 
 export const ConstructClient = Api.constructClient;

@@ -7,8 +7,9 @@ import type { DialogInfo } from "../../comps/Modal";
 import { ReusableFuncs, type ModalControl } from "../../main";
 import { IsNullOrEmpty } from "../../tools/Misc";
 
+export const inputClass = "w-full block-shadow h-10 rounded-lg px-3 interactive outline-0 bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 focus:border-[#1277d6] text-sm";
+
 export default function Auth() {
-    const inputClass = "w-full block-shadow h-10 rounded-lg px-3 interactive outline-0 bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 focus:border-[#1277d6] text-sm";
 
     const [page, setPage] = useState<"register" | "login">("login");
     const { login, register } = useAuth();

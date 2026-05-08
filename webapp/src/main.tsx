@@ -224,7 +224,7 @@ function AppScope({ side, setSide, mgr }: {
                 ${side == "right" ? 'grow nav-show' : 'nav-hide sm:block'} 
                 sm:col-span-5 lg:col-span-6 bg-slate-200/80 dark:bg-slate-600/80 sm:rounded-lg h-full overflow-hidden
             `}>
-                <div className='overflow-x-hidden overflow-y-auto? w-full h-screen sm:h-full p-3' ref={mobileScreen}>
+                <div className='overflow-x-hidden overflow-y-auto? w-full h-screen sm:h-full p-3 rounded-lg' ref={mobileScreen}>
                     <Routes>
                         <Route path='/chat' element={<Conversation />} />
                         <Route path='/chat/:chatId' element={<Conversation />} />

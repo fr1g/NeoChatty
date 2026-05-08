@@ -1,10 +1,12 @@
 import { ArrowLeftIcon, SearchIcon, ShieldErrorIcon, UserAddIcon, UserListIcon } from "tdesign-icons-react";
 import { Input } from "@headlessui/react";
 import { useContext, useEffect, useState, useCallback, type ReactNode } from "react";
-import { ReusableFuncs } from "../../main";
+import { ReusableFuncs, type ModalControl } from "../../main";
 import { friends as friendsApi, files } from "../../api";
 import { ChattySocket as socketService } from 'chatty-sdk';
 import type { User } from "chatty-sdk";
+import type { DialogInfo } from "../../comps/Modal";
+import AddByAddCode from "../../comps/AddByAddCode";
 function ActionCard({ title, onClick, badge, icon, }: {
     title: string;
     onClick: () => void;
@@ -16,7 +18,7 @@ function ActionCard({ title, onClick, badge, icon, }: {
             {badge > 99 ? '99+' : badge}
         </span>)}
         <div className="text-[#1277d6] flex justify-center">{icon}</div>
-        <p className="font-medium text-sm leading-tight mt-2">{title}</p>
+        <p className="font-medium text-sm leading-tight mt-2 w-full text-center">{title}</p>
     </button>);
 }
 export default function Contacts({ navGoBack }: {
@@ -76,6 +78,22 @@ export default function Contacts({ navGoBack }: {
         ? friendList.filter(friend => (friend.display_name || '').toLowerCase().includes(keyword)
             || (friend.username || '').toLowerCase().includes(keyword))
         : friendList;
+
+
+    function openAddCodeModal() {
+        reuses?.modalUpdate({
+            info: {
+                title: "Add Code",
+                content: '',
+                danger: undefined
+            } as DialogInfo,
+            showing: true,
+            customChildren: <AddByAddCode />
+        } as ModalControl);
+
+
+    }
+
     return <div className="gap-3 max-h-full flex flex-col">
         <div className="hidden sm:flex gap-3 items-center block-shadow border-button" onClick={() => navGoBack()}>
             <ArrowLeftIcon className="block ml-1" />
@@ -90,9 +108,9 @@ export default function Contacts({ navGoBack }: {
         </div>
 
         <div className="grid grid-cols-3 gap-2">
-            <ActionCard title="Add Friend" onClick={() => reuses?.goTo("/newfriend")} icon={<UserAddIcon fillColor='transparent' strokeColor='currentColor' strokeWidth={2} />} />
-            <ActionCard title="Requests" badge={pendingCount} onClick={() => reuses?.goTo("/newfriend")} icon={<UserListIcon fillColor='transparent' strokeColor='currentColor' strokeWidth={2} />} />
-            <ActionCard title="Blocklist" onClick={() => reuses?.goTo("/settings/blacklist")} icon={<ShieldErrorIcon fillColor='transparent' strokeColor='currentColor' strokeWidth={2} />} />
+            <ActionCard title="Add" onClick={() => reuses?.goTo("/newfriend")} icon={<UserAddIcon fillColor='transparent' strokeColor='currentColor' strokeWidth={2} />} badge={pendingCount} />
+            <ActionCard title="Code" onClick={() => openAddCodeModal()} icon={<UserListIcon fillColor='transparent' strokeColor='currentColor' strokeWidth={2} />} />
+            <ActionCard title="Blocks" onClick={() => reuses?.goTo("/settings/blacklist")} icon={<ShieldErrorIcon fillColor='transparent' strokeColor='currentColor' strokeWidth={2} />} />
         </div>
 
         <div className="relative">

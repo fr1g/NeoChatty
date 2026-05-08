@@ -578,7 +578,7 @@ export function Conversation() {
                     <div key={messageKey} className={`group flex items-end gap-2 ${own ? 'flex-row-reverse' : ''} px-1`}>
 
                         <div className={`max-w-[70%] px-3 py-2 rounded-xl ${own
-                            ? 'bg-[#1277d6] text-white rounded-tr-sm'
+                            ? 'bg-[#1277d6] text-white! rounded-tr-sm'
                             : 'bg-white dark:bg-slate-700 rounded-tl-sm shadow-sm'} ${msg.type === 'image' || msg.type === 'video' ? 'p-1 bg-transparent!' : ''}`} onContextMenu={(event) => {
                                 if (canOpenActionMenu(msg)) {
                                     event.preventDefault();

@@ -517,8 +517,8 @@ router.get('/addcode', async (req: AuthRequest, res: Response) => {
  * @swagger
  * /friends/addcode/{code}:
  *   post:
- *     summary: Verify add code and get target user
- *     description: Verifies if an add code is valid and returns the target user information. Request body must be raw text containing target user ID.
+ *     summary: Get user who created this add code
+ *     description: Retrieves the user profile information of the person who created the add code, along with the code's expiration time.
  *     tags:
  *       - Friends
  *     security:
@@ -530,16 +530,9 @@ router.get('/addcode', async (req: AuthRequest, res: Response) => {
  *         schema:
  *           type: integer
  *           description: 8-digit verification code
- *     requestBody:
- *       required: true
- *       content:
- *         text/plain:
- *           schema:
- *             type: string
- *             description: Target user ID as raw text integer
  *     responses:
  *       200:
- *         description: Code verified, returns target user
+ *         description: Code verified, returns creator's user profile and expiration time
  *         content:
  *           application/json:
  *             schema:
@@ -559,41 +552,43 @@ router.get('/addcode', async (req: AuthRequest, res: Response) => {
  *                       type: string
  *                     avatar_locator:
  *                       type: string
+ *                     expireAt:
+ *                       type: integer
+ *                       description: Unix timestamp when code expires
  *       400:
- *         description: Invalid code format or invalid target user ID
+ *         description: Invalid code format
  *       401:
- *         description: Code invalid, expired, or mismatch with target user
+ *         description: Code is invalid or expired
  *       404:
- *         description: Target user not found
+ *         description: Creator user not found
  *       500:
  *         description: Internal server error
  */
-router.post('/addcode/:code', express.text(), async (req: AuthRequest, res: Response) => {
+router.post('/addcode/:code', async (req: AuthRequest, res: Response) => {
     try {
         const code = parseInt(req.params.code);
-        const targetUserIdStr = String(req.body).trim();
-        const targetUserId = parseInt(targetUserIdStr);
 
         if (isNaN(code)) {
             return error(res, 'INVALID_PARAMS', 'Invalid code format', 400);
         }
-        if (isNaN(targetUserId)) {
-            return error(res, 'INVALID_PARAMS', 'Invalid target user ID format', 400);
+
+        const codeInfo = AddCode.getCodeInfo(code);
+        if (!codeInfo) {
+            return error(res, 'UNAUTHORIZED', 'Code is invalid or expired', 401);
         }
 
-        const targetUserIdString = String(targetUserId);
-        if (!AddCode.isValid(targetUserIdString, code)) {
-            return error(res, 'UNAUTHORIZED', 'Code is invalid, expired, or does not match', 401);
-        }
-
-        const targetUser = await User.findByPk(targetUserId, {
+        const creatorUserId = parseInt(codeInfo.ofUser);
+        const creator = await User.findByPk(creatorUserId, {
             attributes: ['id', 'username', 'display_name', 'avatar_locator'],
         });
-        if (!targetUser) {
-            return error(res, 'NOT_FOUND', 'Target user not found', 404);
+        if (!creator) {
+            return error(res, 'NOT_FOUND', 'Creator user not found', 404);
         }
 
-        return success(res, targetUser);
+        return success(res, {
+            ...creator.toJSON(),
+            expireAt: codeInfo.expireAt,
+        });
     }
     catch (err) {
         return error(res, 'SERVER_ERROR', 'Internal server error', 500);

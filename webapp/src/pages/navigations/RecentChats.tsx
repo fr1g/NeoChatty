@@ -129,7 +129,7 @@ export default function RecentChats({ openUserSearch, gotoContacts }: {
 
         {items.length === 0 ? (<div className="flex-1 flex flex-col items-center justify-center text-center px-6">
             <p className="text-slate-400 text-sm">{searchText ? 'No matching chats found' : 'No messages yet. Start a chat with a friend.'}</p>
-            {!searchText && (<button type="button" onClick={() => openUserSearch()} className="mt-4 px-4 py-2 rounded-xl bg-[#1277d6] text-white text-sm font-medium hover:bg-[#06a850]">
+            {!searchText && (<button type="button" onClick={() => openUserSearch()} className="mt-4 px-4 py-2 rounded-xl bg-[#1277d6] text-white! text-sm font-medium hover:bg-[#06a850]">
                 Add Friends
             </button>)}
         </div>) : (<NavList items={items} tight hintBottom />)}

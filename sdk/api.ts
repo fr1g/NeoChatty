@@ -93,10 +93,8 @@ export function constructClient(chatty: ChattyClient) {
         generateAddCode() {
             return client.get<ApiResponse<{ code: number; expireAt: number }>>('/friends/addcode');
         },
-        verifyAddCode(code: number, targetUserId: number) {
-            return client.post<ApiResponse<User>>(`/friends/addcode/${code}`, String(targetUserId), {
-                headers: { 'Content-Type': 'text/plain' },
-            });
+        verifyAddCode(code: number) {
+            return client.post<ApiResponse<User & { expireAt: number }>>(`/friends/addcode/${code}`);
         },
         sendFriendRequestWithCode(code: number, targetUserId: number) {
             return client.put<ApiResponse<{ id: number; message: string; auto_accepted: boolean }>>(`/friends/addcode/${code}`, String(targetUserId), {

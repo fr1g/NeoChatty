@@ -54,29 +54,29 @@ export default function Index() {
     }, []);
     const latestConversation = useMemo(() => state.list[0], [state.list]);
     const displayName = user?.display_name || user?.username || 'User';
-    return (<div className="h-full overflow-y-auto">
-        <div className="rounded-4xl bg-linear-to-br from-[#1277d6] via-[#0ab15a] to-[#065f46] text-white p-6 shadow-xl">
+    return (<div className="h-full overflow-y-auto p-3">
+        <div className="rounded-4xl bg-linear-to-br from-[#1277d655] via-[#0fc76255] to-[#065f4655] text-white p-6 shadow-lg">
             <p className="text-sm/5 text-white/80">Welcome back</p>
-            <h1 className="text-3xl font-bold mt-2">{displayName}</h1>
-            <p className="text-sm text-white/85 mt-3 max-w-xl">
+            <h1 className="text-xl font-bold ">{displayName}</h1>
+            <p className="text-sm text-white/85 max-w-xl">
                 The web app now shares the same conversation, contacts, friend request, profile, and settings features as the RN client.
                 Continue chatting from the left sidebar or use the shortcuts below.
             </p>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-5">
-                <button type="button" onClick={() => reuses?.goTo('/newfriend')} className="rounded-2xl bg-white/14 hover:bg-white/18 px-4 py-4 text-left backdrop-blur-sm">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-1.5 mt-3">
+                <button type="button" onClick={() => reuses?.goTo('/newfriend')} className="rounded-2xl bg-white/14 hover:bg-white/18 px-4 py-3 text-left backdrop-blur-sm">
                     <UserAddIcon fillColor="transparent" strokeColor="currentColor" strokeWidth={2} />
-                    <p className="font-semibold mt-3">Add Friend</p>
+                    <p className="font-semibold mt-1.5">Add Friend</p>
                     <p className="text-sm text-white/75 mt-1">Find new people and handle friend requests</p>
                 </button>
-                <button type="button" onClick={() => reuses?.goTo('/settings')} className="rounded-2xl bg-white/14 hover:bg-white/18 px-4 py-4 text-left backdrop-blur-sm">
+                <button type="button" onClick={() => reuses?.goTo('/settings')} className="rounded-2xl bg-white/14 hover:bg-white/18 px-4 py-3 text-left backdrop-blur-sm">
                     <UserCircleIcon fillColor="transparent" strokeColor="currentColor" strokeWidth={2} />
-                    <p className="font-semibold mt-3">My Profile</p>
-                    <p className="text-sm text-white/75 mt-1">Edit your avatar, display name, privacy, and password</p>
+                    <p className="font-semibold mt-1.5">My Profile</p>
+                    <p className="text-sm text-white/75 mt-1">Edit your profile, privacy, and password</p>
                 </button>
-                <button type="button" onClick={() => reuses?.goHome()} className="rounded-2xl bg-white/14 hover:bg-white/18 px-4 py-4 text-left backdrop-blur-sm">
+                <button type="button" onClick={() => reuses?.goHome()} className="rounded-2xl bg-white/14 hover:bg-white/18 px-4 py-3 text-left backdrop-blur-sm">
                     <UserListIcon fillColor="transparent" strokeColor="currentColor" strokeWidth={2} />
-                    <p className="font-semibold mt-3">Open Lists</p>
+                    <p className="font-semibold mt-1.5">Open Lists</p>
                     <p className="text-sm text-white/75 mt-1">Jump between messages and contacts from the sidebar</p>
                 </button>
             </div>
@@ -113,7 +113,7 @@ export default function Index() {
             </button>) : (<div className="mt-4 rounded-2xl border border-dashed border-slate-300 dark:border-slate-600 p-6 text-center">
                 <p className="font-medium">No conversations yet</p>
                 <p className="text-sm text-slate-500 mt-2">Add a friend first, then start your first conversation from the message list.</p>
-                <button type="button" onClick={() => reuses?.goTo('/newfriend')} className="mt-4 px-4 py-2 rounded-xl bg-[#1277d6] text-white font-medium hover:bg-[#06a850]">
+                <button type="button" onClick={() => reuses?.goTo('/newfriend')} className="mt-4 px-4 py-2 rounded-xl bg-[#1277d6] text-white! font-medium hover:bg-[#06a850]">
                     Add Friends
                 </button>
             </div>)}

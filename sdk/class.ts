@@ -82,3 +82,17 @@ export type AddCodeResponse = ApiResponse<{
     code: number;
     expireAt: number;
 }>;
+
+export class AddCode {
+    code: number | null = null;
+    expireAt: number = 0;
+
+    constructor(code?: number, expireAt?: number) {
+        this.code = code ?? null;
+        this.expireAt = expireAt ?? 0;
+    }
+
+    toStringPair(): [string, string] {
+        return [`${this.code ?? '-'}`, `${this.expireAt ?? '-'}`];
+    }
+}
