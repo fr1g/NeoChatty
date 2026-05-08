@@ -40,7 +40,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: "18"
+          node-version: "22"
           cache: "pnpm"
           cache-dependency-path: "sdk/pnpm-lock.yaml"
 
@@ -75,7 +75,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: "18"
+          node-version: "22"
           cache: "pnpm"
           cache-dependency-path: "webapp/pnpm-lock.yaml"
 
@@ -142,7 +142,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: "18"
+          node-version: "22"
 
       - name: Install app dependencies
         working-directory: app
@@ -193,7 +193,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: "18"
+          node-version: "22"
 
       - name: Install app dependencies
         working-directory: app
@@ -272,6 +272,41 @@ jobs:
           name: app-ipa-unsigned
           path: app/app.ipa
 
+  build-server:
+    name: Build Server
+    runs-on: ubuntu-latest
+    needs: [check-trigger, build-sdk]
+    if: needs.check-trigger.outputs.should_build == 'true'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 8
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "pnpm"
+          cache-dependency-path: "server/pnpm-lock.yaml"
+
+      - name: Install dependencies
+        working-directory: server
+        run: pnpm install
+
+      - name: Build Server
+        working-directory: server
+        run: pnpm run build
+
+      - name: Upload Server artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: server-dist
+          path: server/dist/
+
   build-summary:
     name: Build Summary
     runs-on: ubuntu-latest
@@ -283,6 +318,7 @@ jobs:
         build-stager,
         build-app-apk,
         build-app-ipa,
+        build-server,
       ]
     if: always() && needs.check-trigger.outputs.should_build == 'true'
     steps:
