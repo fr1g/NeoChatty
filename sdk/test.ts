@@ -63,10 +63,10 @@ async function runTest() {
                 console.log('  [*] Testing GET /api/health...');
                 const healthResponse = await api.system.getHealth();
                 console.log('  [✓] Health check successful');
-                console.log('      Response:', JSON.stringify(healthResponse.data, null, 2));
+                console.log('        Response:', JSON.stringify(healthResponse.data, null, 2));
             } catch (error: any) {
                 console.log('  [✗] Health check failed');
-                console.log('      Error:', error.message || error);
+                console.log('        Error:', error.message || error);
             }
         }, 123);
 
@@ -75,10 +75,10 @@ async function runTest() {
                 console.log('\n  [*] Testing GET /api/motd...');
                 const motdResponse = await api.system.getMotd();
                 console.log('  [✓] MOTD fetch successful');
-                console.log('      Response:', JSON.stringify(motdResponse.data, null, 2));
+                console.log('        Response:', JSON.stringify(motdResponse.data, null, 2));
             } catch (error: any) {
                 console.log('  [✗] MOTD fetch failed');
-                console.log('      Error:', error.message || error);
+                console.log('        Error:', error.message || error);
             }
         }, 123);
 
@@ -101,9 +101,9 @@ async function runTest() {
 
                 ChattySocket.ping((response) => {
                     console.log('  [✓] Ping successful');
-                    console.log('      Server timestamp:', response.timestamp);
-                    console.log('      Client timestamp:', Date.now());
-                    console.log('      Latency (approx):', Math.abs(Date.now() - response.timestamp), 'ms');
+                    console.log('        Server timestamp:', response.timestamp);
+                    console.log('        Client timestamp:', Date.now());
+                    console.log('        Latency (approx):', Math.abs(Date.now() - response.timestamp), 'ms');
                     ChattySocket.disconnectPublic();
                     resolve();
                 });
@@ -116,7 +116,7 @@ async function runTest() {
             });
         } catch (error: any) {
             console.log('  [✗] Socket connection failed');
-            console.log('      Error:', error.message || error);
+            console.log('        Error:', error.message || error);
         }
 
         console.log('\n=== Test Suite Completed ===\n');

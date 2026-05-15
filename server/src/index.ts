@@ -48,7 +48,7 @@ app.use('/api/conversations', conversationsRoutes);
 
 /**
  * @swagger
- * /api/health:
+ * /health:
  *   get:
  *     summary: Health check endpoint
  *     description: Returns the server health status
@@ -78,7 +78,7 @@ app.get('/api/health', (_req, res) => {
 
 /**
  * @swagger
- * /api/motd:
+ * /motd:
  *   get:
  *     summary: Get Message of the Day
  *     description: Returns the message of the day, server info, and uptime
