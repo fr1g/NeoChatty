@@ -523,7 +523,7 @@ export function Conversation() {
                     </div>
                 </button>);
             default:
-                return <span className={`text-sm break-all whitespace-pre-wrap ${own ? 'text-white' : ''}`}>{msg.content}</span>;
+                return <span className={`text-sm break-all whitespace-pre-wrap ${own ? 'text-white!' : ''}`}>{msg.content}</span>;
         }
     };
     if (!chatId || !peerId || Number.isNaN(peerId)) {

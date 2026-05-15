@@ -1,4 +1,4 @@
-import { ArrowLeftIcon, SearchIcon, ShieldErrorIcon, UserAddIcon, UserListIcon } from "tdesign-icons-react";
+import { ArrowLeftIcon, SearchIcon, ShieldErrorIcon, UserAddIcon, UsergroupCircleIcon } from "tdesign-icons-react";
 import { Input } from "@headlessui/react";
 import { useContext, useEffect, useState, useCallback, type ReactNode } from "react";
 import { ReusableFuncs, type ModalControl } from "../../main";
@@ -109,7 +109,7 @@ export default function Contacts({ navGoBack }: {
 
         <div className="grid grid-cols-3 gap-2">
             <ActionCard title="Add" onClick={() => reuses?.goTo("/newfriend")} icon={<UserAddIcon fillColor='transparent' strokeColor='currentColor' strokeWidth={2} />} badge={pendingCount} />
-            <ActionCard title="Code" onClick={() => openAddCodeModal()} icon={<UserListIcon fillColor='transparent' strokeColor='currentColor' strokeWidth={2} />} />
+            <ActionCard title="Code" onClick={() => openAddCodeModal()} icon={<UsergroupCircleIcon fillColor='transparent' strokeColor='currentColor' strokeWidth={2} />} />
             <ActionCard title="Blocks" onClick={() => reuses?.goTo("/settings/blacklist")} icon={<ShieldErrorIcon fillColor='transparent' strokeColor='currentColor' strokeWidth={2} />} />
         </div>
 

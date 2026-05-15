@@ -141,7 +141,16 @@ export function constructClient(chatty: ChattyClient) {
         },
     };
 
-    return { blocks, friends, users, auth, conversations, messages, files }
+    const system = {
+        getHealth() {
+            return client.get<ApiResponse<{ status: string }>>('/health');
+        },
+        getMotd() {
+            return client.get<ApiResponse<{ motd: string; info: string; uptime: number }>>('/motd');
+        },
+    };
+
+    return { blocks, friends, users, auth, conversations, messages, files, system }
 
 }
 

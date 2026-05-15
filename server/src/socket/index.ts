@@ -94,6 +94,26 @@ export function setupSocket(httpServer: HttpServer) {
     });
     return io;
 }
+
+export function setupPublicSocket(httpServer: HttpServer) {
+    const publicIo = new Server(httpServer, {
+        path: '/chathub/public',
+        cors: {
+            origin: '*',
+            methods: ['GET', 'POST'],
+        },
+    });
+
+    const publicNamespace = publicIo.of('/chathub/public');
+    publicNamespace.on('connection', (socket: Socket) => {
+        socket.on('ping', (callback) => {
+            callback({ timestamp: Date.now() });
+        });
+    });
+
+    return publicIo;
+}
+
 async function notifyFriendsStatus(userId: number, isOnline: boolean) {
     const contacts = await Contact.findAll({
         where: { user_id: userId },

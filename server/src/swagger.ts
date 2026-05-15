@@ -35,6 +35,10 @@ const options = {
         security: [],
         tags: [
             {
+                name: 'System',
+                description: 'System endpoints',
+            },
+            {
                 name: 'Authentication',
                 description: 'User authentication endpoints',
             },
@@ -65,6 +69,7 @@ const options = {
         ],
     },
     apis: [
+        path.join(__dirname, './index.ts'),
         path.join(__dirname, './routes/auth.ts'),
         path.join(__dirname, './routes/users.ts'),
         path.join(__dirname, './routes/friends.ts'),

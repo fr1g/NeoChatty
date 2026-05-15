@@ -13,5 +13,7 @@ export interface AppConfig {
     USE_HTTPS: boolean;
     PORT: number;
     DB: DatabaseConfig;
+    MOTD: string;
+    INFO: string;
     [key: string]: any;
 }

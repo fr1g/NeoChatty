@@ -76,6 +76,7 @@ export default function Auth() {
     const handleChangeServer = (addr: string | undefined) => {
         // set localStorage
         let anotherServer;
+        console.log('another server set', addr)
         if (IsNullOrEmpty(addr)) anotherServer = "rus.kami.su";
         else anotherServer = addr as string;
 

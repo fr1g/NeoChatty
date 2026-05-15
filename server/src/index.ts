@@ -5,7 +5,7 @@ import os from 'os';
 import path from 'path';
 import swaggerUi from 'swagger-ui-express';
 import sequelize from './config/database';
-import { setupSocket } from './socket';
+import { setupSocket, setupPublicSocket } from './socket';
 import { getConfig } from './config/index';
 import authRoutes from './routes/auth';
 import usersRoutes from './routes/users';
@@ -17,7 +17,8 @@ import conversationsRoutes from './routes/conversations';
 import { cleanupDuplicateIndexes } from './utils/database';
 import { getSwaggerSpec } from './swagger';
 import './models';
-import { renderMOTD } from './utils/motd';
+import { renderMOTD, renderPlaceholderInfo } from './utils/motd';
+import GlobalScope from './global';
 
 const appConfig = getConfig();
 
@@ -44,10 +45,81 @@ app.use('/api/blocks', blocksRoutes);
 app.use('/api/files', filesRoutes);
 app.use('/api/messages', messagesRoutes);
 app.use('/api/conversations', conversationsRoutes);
+
+/**
+ * @swagger
+ * /api/health:
+ *   get:
+ *     summary: Health check endpoint
+ *     description: Returns the server health status
+ *     tags:
+ *       - System
+ *     responses:
+ *       200:
+ *         description: Server is healthy
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     status:
+ *                       type: string
+ *                       example: ok
+ */
 app.get('/api/health', (_req, res) => {
     res.json({ success: true, data: { status: 'ok' } });
 });
+
+/**
+ * @swagger
+ * /api/motd:
+ *   get:
+ *     summary: Get Message of the Day
+ *     description: Returns the message of the day, server info, and uptime
+ *     tags:
+ *       - System
+ *     responses:
+ *       200:
+ *         description: Successfully retrieved MOTD and server information
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     motd:
+ *                       type: string
+ *                       description: Message of the day
+ *                     info:
+ *                       type: string
+ *                       description: Additional server information
+ *                     uptime:
+ *                       type: number
+ *                       description: Server uptime in milliseconds
+ */
+app.get('/api/motd', (_req, res) => {
+    res.json({
+        success: true, data: {
+            motd: renderPlaceholderInfo(appConfig.MOTD),
+            info: renderPlaceholderInfo(appConfig.INFO),
+            uptime: GlobalScope.LaunchedAt - Date.now()
+        }
+    });
+});
+
 setupSocket(server);
+setupPublicSocket(server);
 const PORT = process.env.PORT || appConfig.PORT;
 function getLanAddresses(): string[] {
     const networkInterfaces = os.networkInterfaces();
@@ -65,12 +137,9 @@ function getLanAddresses(): string[] {
 }
 function logServerAddresses(port: string | number) {
     const useHttps = appConfig.USE_HTTPS;
-    const localOrigin = `http${useHttps ? 's' : ''}://localhost:${port}`;
     const lanOrigins = getLanAddresses().map((address) => `http${useHttps ? 's' : ''}://${address}:${port}`);
     if (lanOrigins.length === 0) {
         return;
-    }
-    for (const origin of lanOrigins) { // ...
     }
 }
 

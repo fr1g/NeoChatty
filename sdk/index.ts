@@ -7,7 +7,7 @@ export { Client, Classes as ChattyModel, Api, Socket as ChattySocket };
 
 export { ChattyClient, ChattyClientConfig } from './client';
 
-export {
+export type {
     User,
     PrivacySettings,
     UserProfile,
@@ -18,9 +18,10 @@ export {
     AuthTokens,
     LoginResponse,
     UploadResponse,
-    AddCode,
     AddCodeResponse
 } from './class';
+
+export { AddCode } from './class';
 
 export const ConstructClient = Api.constructClient;
 // export type AuthExpiredCallback = AuthExpiredCallback

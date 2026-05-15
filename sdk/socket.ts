@@ -1,6 +1,7 @@
 import { io, Socket } from 'socket.io-client';
 
 export let socket: Socket | null = null;
+export let publicSocket: Socket | null = null;
 let reconnectCallback: (() => void) | null = null;
 let isFirstConnect = true;
 export function setOnReconnect(cb: () => void) {
@@ -30,6 +31,9 @@ export function connect(tokens: { accessToken: string | null, refreshToken: stri
     socket.connect();
     return socket;
 }
+
+
+
 export function disconnect(): void {
     if (socket) {
         socket.disconnect();
@@ -38,6 +42,10 @@ export function disconnect(): void {
 }
 export function getSocket(): Socket | null {
     return socket;
+}
+
+export function getPublicSocket(): Socket | null {
+    return publicSocket;
 }
 function on<T = any>(event: string, callback: (data: T) => void): () => void {
     socket?.on(event, callback);
@@ -85,6 +93,41 @@ export function onUserOffline(callback: (data: any) => void) {
 export function onForceDisconnect(callback: (data: any) => void) {
     return on('force_disconnect', callback);
 }
+
+
+export function connectPublic(url: string): Socket {
+    if (publicSocket) {
+        publicSocket.disconnect();
+    }
+    publicSocket = io(`${url}`, {
+        path: '/chathub/public',
+        reconnection: true,
+        reconnectionDelay: 1000,
+        reconnectionDelayMax: 30000,
+        reconnectionAttempts: Infinity,
+    });
+    publicSocket.connect();
+    return publicSocket;
+}
+
+export function disconnectPublic(): void {
+    if (publicSocket) {
+        publicSocket.disconnect();
+        publicSocket = null;
+    }
+}
+
+export function ping(callback?: (data: { timestamp: number }) => void) {
+    if (!publicSocket) {
+        console.error('Public socket not connected');
+        return;
+    }
+    publicSocket.emit('ping', (response: { timestamp: number }) => {
+        console.log('Ping response:', response);
+        callback?.(response);
+    });
+}
+
 export function removeAllListeners(): void {
     socket?.removeAllListeners();
 }
