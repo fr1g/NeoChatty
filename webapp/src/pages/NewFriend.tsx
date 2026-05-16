@@ -140,7 +140,7 @@ export default function NewFriend() {
                 </div>
                 <input type="text" value={query} onChange={event => setQuery(event.target.value)} onKeyDown={event => event.key === 'Enter' && runSearch(query)} placeholder="Search by username or display name..." className="w-full h-9 rounded-lg pl-8 pr-3 bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 outline-0 focus:border-[#1277d6] text-sm" />
             </div>
-            <button onClick={() => runSearch(query)} disabled={searching} className="px-4 h-9 rounded-lg bg-[#1277d6] text-white! text-sm font-medium hover:bg-[#06a850] disabled:opacity-50 shrink-0">
+            <button onClick={() => runSearch(query)} disabled={searching} className="px-4 h-9 rounded-lg bg-[#1277d6] text-white! text-sm font-medium hover:bg-[#3596f1dd] disabled:opacity-50 shrink-0">
                 {searching ? 'Searching...' : 'Search'}
             </button>
         </div>
@@ -172,7 +172,7 @@ export default function NewFriend() {
                             {user.relationship === 'friend' ? (<span className="text-xs text-slate-400 px-2">Already friends</span>) : user.relationship === 'pending_sent' ? (<span className="text-xs text-slate-400 px-2">Sent</span>) : user.relationship === 'pending_received' ? (<span className="text-xs text-blue-500 px-2">Pending</span>) : (<button type="button" onClick={(event) => {
                                 event.stopPropagation();
                                 sendRequest(user.id);
-                            }} className="flex items-center gap-1 text-sm px-3 py-1.5 rounded-lg bg-[#1277d6] text-white! hover:bg-[#06a850]">
+                            }} className="flex items-center gap-1 text-sm px-3 py-1.5 rounded-lg bg-[#1277d6] text-white! hover:bg-[#3596f1dd]">
                                 <UserAddIcon size="14px" /> Add Friend
                             </button>)}
                         </div>);
@@ -200,7 +200,7 @@ export default function NewFriend() {
                                 <p className="text-xs text-slate-500">{formatRequestTime(req)}</p>
                             </div>
                             <div className="flex gap-1">
-                                <button onClick={() => handleRequest(req.id, 'accepted')} className="p-1.5 rounded-lg bg-[#1277d6] text-white! hover:bg-[#06a850]">
+                                <button onClick={() => handleRequest(req.id, 'accepted')} className="p-1.5 rounded-lg bg-[#1277d6] text-white! hover:bg-[#3596f1dd]">
                                     <CheckIcon size="16px" />
                                 </button>
                                 <button onClick={() => handleRequest(req.id, 'rejected')} className="p-1.5 rounded-lg bg-red-400 text-white hover:bg-red-500">

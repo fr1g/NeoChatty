@@ -49,7 +49,7 @@ export default function ChangePassword() {
                 <label className="text-sm text-slate-500 mb-1 block">Confirm New Password</label>
                 <input type="password" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} placeholder="Enter the new password again" className={inputClass} onKeyDown={e => e.key === 'Enter' && handleChange()} />
             </div>
-            <button onClick={handleChange} disabled={loading} className="w-full h-11 rounded-lg bg-[#1277d6] text-white! font-semibold hover:bg-[#06a850] disabled:opacity-50 mt-2">
+            <button onClick={handleChange} disabled={loading} className="w-full h-11 rounded-lg bg-[#1277d6] text-white! font-semibold hover:bg-[#3596f1dd] disabled:opacity-50 mt-2">
                 {loading ? 'Submitting...' : 'Change Password'}
             </button>
         </div>

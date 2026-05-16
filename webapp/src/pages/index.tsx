@@ -113,7 +113,7 @@ export default function Index() {
             </button>) : (<div className="mt-4 rounded-2xl border border-dashed border-slate-300 dark:border-slate-600 p-6 text-center">
                 <p className="font-medium">No conversations yet</p>
                 <p className="text-sm text-slate-500 mt-2">Add a friend first, then start your first conversation from the message list.</p>
-                <button type="button" onClick={() => reuses?.goTo('/newfriend')} className="mt-4 px-4 py-2 rounded-xl bg-[#1277d6] text-white! font-medium hover:bg-[#06a850]">
+                <button type="button" onClick={() => reuses?.goTo('/newfriend')} className="mt-4 px-4 py-2 rounded-xl bg-[#1277d6] text-white! font-medium hover:bg-[#3596f1dd]">
                     Add Friends
                 </button>
             </div>)}
