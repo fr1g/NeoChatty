@@ -13,7 +13,7 @@
     "@headlessui/react": "^2.2.9",
     "@tailwindcss/vite": "^4.1.18",
     "axios": "^1.13.6",
-    "chatty-sdk": "link:..\\sdk",
+    "chatty-sdk": "^1.0.1",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "react-router": "^7.13.0",
