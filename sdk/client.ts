@@ -156,7 +156,8 @@ export class ChattyClient {
 
     appendAccessTokenUrl(url: string, token: string) {
         const separator = url.includes('?') ? '&' : '?';
-        return `${url.split('#')[0]}${separator}token=${encodeURIComponent(token)}`;
+        const appendix = `token=${encodeURIComponent(token)}`;
+        return `${url.split('#')[0]}${separator}${token.length <= 0 ? '' : appendix}`;
     }
 
     // 

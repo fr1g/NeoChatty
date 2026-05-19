@@ -1,17 +1,23 @@
-import client, { BASE_URL, appendAccessToken, getAuthHeaders, getTokens } from './client';
+import { ApiResponse, ConstructClient } from "chatty-sdk";
+
+import { ChattyClient, ChattyClientConfig, DEFAULT_CLIENT_CONFIG } from 'chatty-sdk';
+import { getter, remover, setter } from "./mapio";
+
 import * as LegacyFileSystem from 'expo-file-system/legacy';
-import type { ApiResponse, LoginResponse, User, UserProfile, PrivacySettings, FriendRequest, Message, Conversation, } from '../types';
+
 type UploadResponse = ApiResponse<{
     locator: string;
     original_name: string;
     file_size: number;
     mime_type: string;
 }>;
+
 export type UploadFilePayload = {
     uri: string;
     name: string;
     type: string;
 };
+
 function parseJsonSafely<T>(value: string): T | string | null {
     if (!value) {
         return null;
@@ -23,11 +29,12 @@ function parseJsonSafely<T>(value: string): T | string | null {
         return value;
     }
 }
+
 async function uploadWithNativeTask(file: UploadFilePayload, onUploadProgress?: (progress: number) => void): Promise<{
     data: UploadResponse;
 }> {
-    const { accessToken } = await getTokens();
-    const url = `${BASE_URL}/files/upload`;
+    const { accessToken } = await client.getTokensAsync(getter);
+    const url = `${client.config.getApi()}/files/upload`;
     try {
         const options = {
             fieldName: 'file',
@@ -73,115 +80,52 @@ async function uploadWithNativeTask(file: UploadFilePayload, onUploadProgress?: 
         throw error;
     }
 }
-export const auth = {
-    register(username: string, password: string, display_name?: string) {
-        return client.post<ApiResponse<LoginResponse>>('/auth/register', {
-            username,
-            password,
-            display_name,
-        });
-    },
-    login(username: string, password: string) {
-        return client.post<ApiResponse<LoginResponse>>('/auth/login', {
-            username,
-            password,
-        });
-    },
-    refreshToken(token: string) {
-        return client.post<ApiResponse<{
-            accessToken: string;
-            refreshToken: string;
-        }>>('/auth/refresh', { refreshToken: token });
-    },
-    changePassword(old_password: string, new_password: string) {
-        return client.put<ApiResponse<null>>('/auth/password', {
-            old_password,
-            new_password,
-        });
-    },
+
+async function tryReadConfigAsync(): Promise<ChattyClientConfig | null> {
+    const raw = await getter('chattyClientConfig');
+    if (!raw) return null;
+    try {
+        let parsed = parseJsonSafely<ChattyClientConfig>(raw);
+
+        if (!(parsed instanceof ChattyClientConfig)) // may cause always-default exception
+            throw new Error(`CCC read got wrong type. read value: ${parsed}`); // hint if the returned value only "as" in typescript but prototype differend (functions lost) then may cause error on the value (not-very-same on type)
+
+        parsed = new ChattyClientConfig(parsed.useHttps, parsed.endpoint);
+        if (parsed.endpoint && (typeof parsed.useHttps == "boolean")) return parsed;
+    } catch (error) {
+        console.warn("Failed to parse client config from localStorage, using default. Error:", error);
+        return null;
+    }
+    return null;
+
 };
-export const users = {
-    getMyProfile() {
-        return client.get<ApiResponse<UserProfile>>('/users/me');
-    },
-    updateProfile(data: Partial<Pick<User, 'display_name' | 'avatar_locator' | 'background_locator'>>) {
-        return client.put<ApiResponse<User>>('/users/me', data);
-    },
-    getMyPrivacy() {
-        return client.get<ApiResponse<PrivacySettings>>('/users/me/privacy');
-    },
-    updatePrivacy(data: Partial<PrivacySettings>) {
-        return client.put<ApiResponse<PrivacySettings>>('/users/me/privacy', data);
-    },
-    getUserProfile(id: number) {
-        return client.get<ApiResponse<UserProfile>>(`/users/${id}`);
-    },
-    searchUsers(q: string, page?: number, limit?: number) {
-        return client.get<ApiResponse<{
-            users: UserProfile[];
-            total: number;
-        }>>('/users/search', { params: { q, page, limit } });
-    },
-};
-export const friends = {
-    sendFriendRequest(to_user_id: number) {
-        return client.post<ApiResponse<FriendRequest>>('/friends/request', {
-            to_user_id,
-        });
-    },
-    getFriendRequests(type: 'received' | 'sent') {
-        return client.get<ApiResponse<FriendRequest[]>>('/friends/requests', {
-            params: { type },
-        });
-    },
-    handleFriendRequest(id: number, status: 'accepted' | 'rejected') {
-        return client.put<ApiResponse<FriendRequest>>(`/friends/request/${id}`, { status });
-    },
-    getFriends() {
-        return client.get<ApiResponse<User[]>>('/friends');
-    },
-    deleteFriend(userId: number) {
-        return client.delete<ApiResponse<null>>(`/friends/${userId}`);
-    },
-};
-export const blocks = {
-    blockUser(user_id: number) {
-        return client.post<ApiResponse<null>>('/blocks', { user_id });
-    },
-    getBlocks() {
-        return client.get<ApiResponse<User[]>>('/blocks');
-    },
-    unblockUser(userId: number) {
-        return client.delete<ApiResponse<null>>(`/blocks/${userId}`);
-    },
-};
-export const files = { // files {...filesx} and replace uploadFile, replace others and all inherit from main.ts(this app) the exported
-    // or, move this to main.ts and expose all there.
+
+export let client = await (new ChattyClient(await tryReadConfigAsync() ?? DEFAULT_CLIENT_CONFIG)).initClientAsync(setter, getter, remover);
+
+export let constructed = ConstructClient(client);
+
+export let conversations = constructed.conversations;
+export let blocks = constructed.blocks;
+export let users = constructed.users;
+export let auth = constructed.auth;
+export let messages = constructed.messages;
+export let friends = constructed.friends;
+
+export let files = {
+    ...constructed.files,
     uploadFile(file: UploadFilePayload, onUploadProgress?: (progress: number) => void) {
         return uploadWithNativeTask(file, onUploadProgress);
     },
     getFileUrl(locator: string): string {
-        return appendAccessToken(`${BASE_URL}/files/${locator}`);
+        return client.appendAccessTokenUrl(`${client.config.getApi()}/files/${locator}`, client.cachedAccessToken ?? "");
     },
     getFileSource(locator: string) {
         return {
-            uri: appendAccessToken(`${BASE_URL}/files/${locator}`),
-            headers: getAuthHeaders(),
+            uri: client.appendAccessTokenUrl(`${client.config.getApi()}/files/${locator}`, client.cachedAccessToken ?? ""),
+            headers: client.appendAuthHeader(client.cachedAccessToken),
         };
     },
     async uploadAvatar(file: UploadFilePayload) {
         return uploadWithNativeTask(file);
-    },
-};
-export const messages = {
-    getMessages(friendId: number, before?: number, limit?: number) {
-        return client.get<ApiResponse<Message[]>>(`/messages/${friendId}`, {
-            params: { before, limit },
-        });
-    },
-};
-export const conversations = {
-    getConversations() {
-        return client.get<ApiResponse<Conversation[]>>('/conversations');
     },
 };
