@@ -3,10 +3,13 @@
   "version": "1.0.0",
   "main": "index.ts",
   "scripts": {
-    "start": "expo start",
-    "android": "expo start --android",
-    "ios": "expo start --ios",
-    "web": "expo start --web"
+    "expo-start": "expo start",
+    "expo-android": "expo start --android",
+    "expo-ios": "expo start --ios",
+    "start": "react-native start",
+    "android": "expo run:android",
+    "logkitty": "react-native log-android",
+    "prebuild": "expo prebuild"
   },
   "dependencies": {
     "@expo/vector-icons": "^15.0.2",
@@ -30,6 +33,8 @@
     "socket.io-client": "^4.8.3"
   },
   "devDependencies": {
+    "@react-native-community/cli": "latest",
+    "@react-native/metro-config": "^0.85.3",
     "@types/react": "~19.2.2",
     "typescript": "~5.9.2"
   }

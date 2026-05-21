@@ -87,45 +87,74 @@ async function tryReadConfigAsync(): Promise<ChattyClientConfig | null> {
     try {
         let parsed = parseJsonSafely<ChattyClientConfig>(raw);
 
-        if (!(parsed instanceof ChattyClientConfig)) // may cause always-default exception
-            throw new Error(`CCC read got wrong type. read value: ${parsed}`); // hint if the returned value only "as" in typescript but prototype differend (functions lost) then may cause error on the value (not-very-same on type)
+        if (!(parsed instanceof ChattyClientConfig)) {
+            throw new Error(`CCC read got wrong type. read value: ${parsed}`);
+        }
 
         parsed = new ChattyClientConfig(parsed.useHttps, parsed.endpoint);
-        if (parsed.endpoint && (typeof parsed.useHttps == "boolean")) return parsed;
+        if (parsed.endpoint && (typeof parsed.useHttps === "boolean")) return parsed;
     } catch (error) {
         console.warn("Failed to parse client config from localStorage, using default. Error:", error);
         return null;
     }
     return null;
+}
 
-};
+let client: any = null;
+let constructed: any = null;
+let conversations: any = null;
+let blocks: any = null;
+let users: any = null;
+let auth: any = null;
+let messages: any = null;
+let friends: any = null;
+let files: any = null;
 
-export let client = await (new ChattyClient(await tryReadConfigAsync() ?? DEFAULT_CLIENT_CONFIG)).initClientAsync(setter, getter, remover);
+export async function initializeClient() {
+    const { setClient } = await import('./client');
 
-export let constructed = ConstructClient(client);
+    const config = await tryReadConfigAsync() ?? DEFAULT_CLIENT_CONFIG;
+    client = await (new ChattyClient(config)).initClientAsync(setter, getter, remover);
 
-export let conversations = constructed.conversations;
-export let blocks = constructed.blocks;
-export let users = constructed.users;
-export let auth = constructed.auth;
-export let messages = constructed.messages;
-export let friends = constructed.friends;
+    setClient(client);
 
-export let files = {
-    ...constructed.files,
-    uploadFile(file: UploadFilePayload, onUploadProgress?: (progress: number) => void) {
-        return uploadWithNativeTask(file, onUploadProgress);
-    },
-    getFileUrl(locator: string): string {
-        return client.appendAccessTokenUrl(`${client.config.getApi()}/files/${locator}`, client.cachedAccessToken ?? "");
-    },
-    getFileSource(locator: string) {
-        return {
-            uri: client.appendAccessTokenUrl(`${client.config.getApi()}/files/${locator}`, client.cachedAccessToken ?? ""),
-            headers: client.appendAuthHeader(client.cachedAccessToken),
-        };
-    },
-    async uploadAvatar(file: UploadFilePayload) {
-        return uploadWithNativeTask(file);
-    },
+    constructed = ConstructClient(client);
+
+    conversations = constructed.conversations;
+    blocks = constructed.blocks;
+    users = constructed.users;
+    auth = constructed.auth;
+    messages = constructed.messages;
+    friends = constructed.friends;
+
+    files = {
+        ...constructed.files,
+        uploadFile(file: UploadFilePayload, onUploadProgress?: (progress: number) => void) {
+            return uploadWithNativeTask(file, onUploadProgress);
+        },
+        getFileUrl(locator: string): string {
+            return client.appendAccessTokenUrl(`${client.config.getApi()}/files/${locator}`, client.cachedAccessToken ?? "");
+        },
+        getFileSource(locator: string) {
+            return {
+                uri: client.appendAccessTokenUrl(`${client.config.getApi()}/files/${locator}`, client.cachedAccessToken ?? ""),
+                headers: client.appendAuthHeader(client.cachedAccessToken),
+            };
+        },
+        async uploadAvatar(file: UploadFilePayload) {
+            return uploadWithNativeTask(file);
+        },
+    };
+}
+
+export {
+    client,
+    constructed,
+    conversations,
+    blocks,
+    users,
+    auth,
+    messages,
+    friends,
+    files,
 };

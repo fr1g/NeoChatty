@@ -11,8 +11,10 @@
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
+    "jsEngine": "hermes",
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "jsEngine": "jsc"
     },
     "android": {
       "adaptiveIcon": {
@@ -21,7 +23,8 @@
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "package": "com.fr111g.app"
     },
     "web": {
       "favicon": "./assets/favicon.png"
