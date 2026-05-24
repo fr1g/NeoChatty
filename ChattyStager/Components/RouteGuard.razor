@@ -1,0 +1,53 @@
+@using ChattyStager.Services
+@inject SessionStateProvider SessionState
+@inject SessionService SessionService
+@inject NavigationManager Navigation
+
+@if (_ready)
+{
+    <RouteView RouteData="RouteData" DefaultLayout="typeof(Layout.MainLayout)" />
+    <FocusOnNavigate RouteData="RouteData" Selector="h1" />
+}
+
+@code {
+    [Parameter] public RouteData RouteData { get; set; } = default!;
+    private bool _ready;
+
+    protected override void OnInitialized()
+    {
+        var pageType = RouteData.PageType;
+        var isSetupPage = pageType == typeof(Pages.Setup);
+        var isLoginPage = pageType == typeof(Pages.Login);
+
+        if (SessionState.NeedsSetup)
+        {
+            if (!isSetupPage)
+            {
+                Navigation.NavigateTo("/Setup", true);
+                return;
+            }
+        }
+        else
+        {
+            if (isSetupPage)
+            {
+                Navigation.NavigateTo("/", true);
+                return;
+            }
+
+            if (!isLoginPage && !SessionService.IsAuthenticated(SessionState.CircuitId))
+            {
+                Navigation.NavigateTo("/Login", true);
+                return;
+            }
+
+            if (isLoginPage && SessionService.IsAuthenticated(SessionState.CircuitId))
+            {
+                Navigation.NavigateTo("/", true);
+                return;
+            }
+        }
+
+        _ready = true;
+    }
+}

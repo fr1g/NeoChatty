@@ -1,4 +1,4 @@
-﻿namespace ChattyStager.Model;
+﻿﻿namespace ChattyStager.Model;
 
 using System.Text.Json;
 using System.IO;
@@ -12,7 +12,9 @@ public class StagerConfig
     public string ChattyHostName { get; set; } = "";
     public string MySqlAddr { get; set; } = "";
     public ushort MySqlPort { get; set; } = 3306;
-    
+    public string MySqlUser { get; set; } = "";
+    public string MySqlPass { get; set; } = "";
+    public string MySqlDatabase { get; set; } = "chatty";
 
 
 
@@ -103,5 +105,23 @@ public class StagerConfig
         }
         
         return false;
-    } 
+    }
+
+    public static async Task<StagerConfig> LoadOrCreateAsync()
+    {
+        var di = new DirectoryInfo(Directory.GetCurrentDirectory());
+        var configPath = Path.Combine(di.FullName, "ChattyStager.json");
+
+        if (File.Exists(configPath))
+        {
+            var loaded = await TryLoad(configPath);
+            if (loaded != null)
+                return loaded;
+        }
+
+        var config = new StagerConfig();
+        var jsonText = JsonSerializer.Serialize(config);
+        await File.WriteAllTextAsync(configPath, jsonText);
+        return config;
+    }
 }

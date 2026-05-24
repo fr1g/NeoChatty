@@ -1,15 +1,28 @@
 using ChattyStager.Components;
 using ChattyStager.Helpers;
+using ChattyStager.Model;
+using ChattyStager.Services;
 using TailwindBlazor;
 
 AppSettingsHelper.AppSettingsCheck();
 
-var builder = WebApplication.CreateBuilder(args);
+var config = await StagerConfig.LoadOrCreateAsync();
 
-builder.UseTailwind();
+var builder = WebApplication.CreateBuilder(args);
+builder.Services.AddSingleton(config);
+builder.Services.AddSingleton<SessionService>();
+builder.Services.AddScoped<SessionStateProvider>();
+builder.Services.AddSingleton<SystemCheckService>();
+builder.Services.AddSingleton<GitHubService>();
+builder.Services.AddSingleton<BackendProcessService>();
+builder.Services.AddScoped<DashboardService>();
 
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
+
+builder.UseTailwind();
+
+builder.Services.AddHttpContextAccessor();
 
 var app = builder.Build();
 

@@ -1,8 +1,462 @@
-﻿@page "/Setup"
-<PageTitle>Setup</PageTitle>
-<h3 class="text-3xl">Setup</h3>
+@page "/Setup"
+@using ChattyStager.Services
+@using ChattyStager.Helpers
+@using ChattyStager.Model
+@inject StagerConfig Config
+@inject SessionService SessionService
+@inject SystemCheckService SystemCheck
+@inject GitHubService GitHub
+@inject NavigationManager Navigation
 
-@code{
+<PageTitle>Setup - ChattyStager</PageTitle>
 
+<div class="min-h-screen  flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-y-auto">
+        <div class="p-8">
+            @if (ShowWelcome)
+            {
+                <div class="text-center py-12">
+                    <div class="text-6xl mb-6">🚀</div>
+                    <h1 class="text-3xl font-bold text-gray-800 mb-4">Welcome to ChattyStager</h1>
+                    <p class="text-gray-500 mb-8">Let's get your Chatty server up and running in a few steps.</p>
+                    <button class="px-8 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-medium" @onclick="StartSetup">
+                        Start Setup
+                    </button>
+                </div>
+            }
+            else if (SetupComplete)
+            {
+                <div class="text-center py-12">
+                    <div class="text-6xl mb-6">✅</div>
+                    <h1 class="text-3xl font-bold text-gray-800 mb-4">Setup Complete</h1>
+                    <p class="text-gray-500 mb-2">@CompletionText</p>
+                    <a href="/stager" class="inline-block mt-6 px-8 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-medium">
+                        Go to Dashboard
+                    </a>
+                </div>
+            }
+            else
+            {
+                <div class="flex items-center mb-8">
+                    <button class="text-gray-400 hover:text-gray-600 mr-4" @onclick="PreviousStep" disabled="@(CurrentStep == 0)">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+                    </button>
+                    <div>
+                        <h2 class="text-2xl font-bold text-gray-800">@GetStepTitle()</h2>
+                        <p class="text-sm text-gray-500">Step @(CurrentStep + 1) of @TotalSteps</p>
+                    </div>
+                </div>
 
+                <div class="flex gap-2 mb-8">
+                    @for (int i = 0; i < TotalSteps; i++)
+                    {
+                        <div class="flex-1 h-2 rounded-full @(i <= CurrentStep ? "bg-indigo-600" : "bg-gray-200")"></div>
+                    }
+                </div>
+
+                <div class="min-h-[300px]">
+                    @CurrentStepContent
+                </div>
+
+                @if (CurrentStep == 0 && !SystemCheckResult.AllChecksPassed)
+                {
+                    <div class="mt-8 flex justify-end">
+                        <button class="px-6 py-2.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50" disabled="@(!CanProceed())" @onclick="NextStep">
+                            Skip Check & Continue
+                        </button>
+                    </div>
+                }
+                else if (CurrentStep < TotalSteps - 1)
+                {
+                    <div class="mt-8 flex justify-end">
+                        <button class="px-6 py-2.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50" disabled="@(!CanProceed())" @onclick="NextStep">
+                            Continue
+                        </button>
+                    </div>
+                }
+                else if (CurrentStep == TotalSteps - 1)
+                {
+                    <div class="mt-8 flex justify-end gap-3">
+                        <button class="px-6 py-2.5 bg-green-600 text-white rounded-lg hover:bg-green-700" @onclick="FinishSetup">
+                            Complete Setup
+                        </button>
+                    </div>
+                }
+            }
+        </div>
+    </div>
+</div>
+
+@code {
+    private int CurrentStep = 0;
+    private int TotalSteps = 8;
+    private bool ShowWelcome = true;
+    private bool SetupComplete = false;
+    private string CompletionText = "";
+    private bool IsBusy = false;
+
+    private SystemCheckResult SystemCheckResult = new();
+    private string PassKey = "";
+    private string PassKeyConfirm = "";
+
+    private string DbHost = "";
+    private string DbPort = "3306";
+    private string DbUser = "";
+    private string DbPass = "";
+    private string DbName = "chatty";
+    private bool DbTestSuccess = false;
+    private string DbTestMessage = "";
+    private bool DbInitDone = false;
+    private string DbInitMessage = "";
+
+    private string WebEndpoint = "";
+    private string HostName = "";
+
+    private string DownloadStatus = "";
+    private int DownloadProgress = 0;
+    private bool DownloadDone = false;
+    private string DownloadLog = "";
+
+    private RenderFragment CurrentStepContent => CurrentStep switch
+    {
+        0 => Step1_SystemCheck,
+        1 => Step2_PassKey,
+        2 => Step3_DatabaseConfig,
+        3 => Step4_DatabaseInit,
+        4 => Step5_OtherSettings,
+        5 => Step6_DownloadArtifacts,
+        6 => Step7_CompletionText,
+        7 => Step8_Finish,
+        _ => Step1_SystemCheck
+    };
+
+    private RenderFragment Step1_SystemCheck => (__builder) =>
+    {
+        <div class="space-y-4">
+            <div class="bg-gray-50 rounded-lg p-4">
+                <h3 class="font-semibold text-gray-700 mb-3">Operating System</h3>
+                <p class="text-gray-600">@SystemCheckResult.OsDescription</p>
+            </div>
+            <div class="grid grid-cols-2 gap-4">
+                <div class="bg-gray-50 rounded-lg p-4">
+                    <h3 class="font-semibold text-gray-700 mb-3">Node.js 24+</h3>
+                    @if (SystemCheckResult.NodeJsInstalled)
+                    { <p class="text-green-600">✅ @SystemCheckResult.NodeJsVersion</p> }
+                    else
+                    { <p class="text-red-600">❌ Not found or below v24</p> }
+                </div>
+                <div class="bg-gray-50 rounded-lg p-4">
+                    <h3 class="font-semibold text-gray-700 mb-3">MySQL 8+ / MariaDB 11+</h3>
+                    @if (SystemCheckResult.MySqlInstalled)
+                    { <p class="text-green-600">✅ @SystemCheckResult.MySqlVersion</p> }
+                    else
+                    { <p class="text-red-600">❌ Not found</p> }
+                </div>
+                <div class="bg-gray-50 rounded-lg p-4">
+                    <h3 class="font-semibold text-gray-700 mb-3">Port 80 (HTTP)</h3>
+                    @if (SystemCheckResult.Port80Available)
+                    { <p class="text-green-600">✅ Available</p> }
+                    else
+                    { <p class="text-red-600">❌ In use</p> }
+                </div>
+                <div class="bg-gray-50 rounded-lg p-4">
+                    <h3 class="font-semibold text-gray-700 mb-3">Port 443 (HTTPS)</h3>
+                    @if (SystemCheckResult.Port443Available)
+                    { <p class="text-green-600">✅ Available</p> }
+                    else
+                    { <p class="text-red-600">❌ In use</p> }
+                </div>
+            </div>
+            <div class="bg-gray-50 rounded-lg p-4">
+                <h3 class="font-semibold text-gray-700 mb-3">Port 5637 (Chatty Backend)</h3>
+                @if (SystemCheckResult.Port5637Available)
+                { <p class="text-green-600">✅ Available</p> }
+                else
+                { <p class="text-red-600">❌ In use</p> }
+            </div>
+            @if (SystemCheckResult.AllChecksPassed)
+            {
+                <div class="bg-green-100 text-green-800 p-3 rounded-lg">All checks passed! You can proceed.</div>
+            }
+            else
+            {
+                <div class="bg-yellow-100 text-yellow-800 p-3 rounded-lg">Some checks failed. Please install missing prerequisites before proceeding, or skip to continue anyway.</div>
+            }
+        </div>
+    };
+
+    private RenderFragment Step2_PassKey => (__builder) =>
+    {
+        <div class="space-y-4">
+            <p class="text-gray-600">Create an access password to protect the ChattyStager management panel.</p>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Access Password</label>
+                <input type="password" class="w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500" @bind="PassKey" placeholder="Minimum 4 characters" />
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Confirm Password</label>
+                <input type="password" class="w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500" @bind="PassKeyConfirm" placeholder="Re-enter password" />
+            </div>
+            @if (!string.IsNullOrEmpty(PassKey) && PassKey != PassKeyConfirm)
+            { <p class="text-red-500 text-sm">Passwords do not match.</p> }
+            @if (!string.IsNullOrEmpty(PassKey) && PassKey.Length < 4)
+            { <p class="text-red-500 text-sm">Password must be at least 4 characters.</p> }
+        </div>
+    };
+
+    private RenderFragment Step3_DatabaseConfig => (__builder) =>
+    {
+        <div class="space-y-4">
+            <p class="text-gray-600">Configure the database connection for the Chatty backend server.</p>
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Host</label>
+                    <input class="w-full p-2.5 border border-gray-300 rounded-lg" @bind="DbHost" placeholder="localhost" />
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Port</label>
+                    <input class="w-full p-2.5 border border-gray-300 rounded-lg" @bind="DbPort" placeholder="3306" />
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Username</label>
+                    <input class="w-full p-2.5 border border-gray-300 rounded-lg" @bind="DbUser" placeholder="root" />
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Password</label>
+                    <input type="password" class="w-full p-2.5 border border-gray-300 rounded-lg" @bind="DbPass" placeholder="Database password" />
+                </div>
+                <div class="col-span-2">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Database Name</label>
+                    <input class="w-full p-2.5 border border-gray-300 rounded-lg" @bind="DbName" placeholder="chatty" />
+                </div>
+            </div>
+            <button class="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50" disabled="@(IsBusy || string.IsNullOrEmpty(DbHost))" @onclick="TestDbConnection">
+                @(IsBusy ? "Testing..." : "Test Connection")
+            </button>
+            @if (!string.IsNullOrEmpty(DbTestMessage))
+            {
+                <div class="@(DbTestSuccess ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800") p-3 rounded-lg">@DbTestMessage</div>
+            }
+        </div>
+    };
+
+    private RenderFragment Step4_DatabaseInit => (__builder) =>
+    {
+        <div class="space-y-4">
+            <p class="text-gray-600">Initialize the database with the required tables and stored procedures.</p>
+            @if (!DbInitDone)
+            {
+                <button class="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50" disabled="@IsBusy" @onclick="InitializeDatabase">
+                    @(IsBusy ? "Initializing..." : "Initialize Database")
+                </button>
+            }
+            @if (!string.IsNullOrEmpty(DbInitMessage))
+            {
+                <div class="@(DbInitDone ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800") p-3 rounded-lg">@DbInitMessage</div>
+            }
+        </div>
+    };
+
+    private RenderFragment Step5_OtherSettings => (__builder) =>
+    {
+        <div class="space-y-4">
+            <p class="text-gray-600">Configure additional settings for your Chatty server.</p>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Web Frontend URL</label>
+                <input class="w-full p-2.5 border border-gray-300 rounded-lg" @bind="WebEndpoint" placeholder="https://chatty.example.com" />
+                <p class="text-xs text-gray-400 mt-1">The public URL where users will access the Chatty web app.</p>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Server Hostname</label>
+                <input class="w-full p-2.5 border border-gray-300 rounded-lg" @bind="HostName" placeholder="chatty-server" />
+                <p class="text-xs text-gray-400 mt-1">A friendly name for this Chatty server instance.</p>
+            </div>
+        </div>
+    };
+
+    private RenderFragment Step6_DownloadArtifacts => (__builder) =>
+    {
+        <div class="space-y-4">
+            <p class="text-gray-600">Download the latest Chatty backend server and web frontend from GitHub Actions.</p>
+            @if (!DownloadDone)
+            {
+                <button class="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50" disabled="@IsBusy" @onclick="DownloadAll">
+                    @(IsBusy ? "Downloading..." : "Download & Extract All")
+                </button>
+            }
+            @if (!string.IsNullOrEmpty(DownloadStatus))
+            {
+                <div class="@(DownloadDone ? "bg-green-100 text-green-800" : "bg-blue-100 text-blue-800") p-3 rounded-lg">@DownloadStatus</div>
+            }
+            @if (!string.IsNullOrEmpty(DownloadLog))
+            {
+                <pre class="bg-gray-900 text-green-400 p-4 rounded-lg text-sm max-h-48 overflow-y-auto">@DownloadLog</pre>
+            }
+        </div>
+    };
+
+    private RenderFragment Step7_CompletionText => (__builder) =>
+    {
+        <div class="space-y-4">
+            <p class="text-gray-600">@SetupSummaryText</p>
+            <div class="bg-gray-50 p-4 rounded-lg">
+                <h3 class="font-semibold text-gray-700 mb-2">Configuration Summary</h3>
+                <ul class="text-sm text-gray-600 space-y-1">
+                    <li><strong>Password Set:</strong> @(!string.IsNullOrEmpty(PassKey) ? "✅" : "❌")</li>
+                    <li><strong>Database:</strong> @DbHost:@DbPort / @DbName</li>
+                    <li><strong>Database Initialized:</strong> @(DbInitDone ? "✅" : "❌")</li>
+                    <li><strong>Backend Downloaded:</strong> @(DownloadDone ? "✅" : "❌")</li>
+                    <li><strong>Web Frontend:</strong> @(!string.IsNullOrEmpty(WebEndpoint) ? WebEndpoint : "Not configured")</li>
+                </ul>
+            </div>
+        </div>
+    };
+
+    private RenderFragment Step8_Finish => (__builder) =>
+    {
+        <div class="space-y-4 text-center py-8">
+            <div class="text-5xl mb-4">🎉</div>
+            <h3 class="text-xl font-bold text-gray-800">Ready to Complete Setup</h3>
+            <p class="text-gray-500">Click "Complete Setup" to save all configurations and start managing your Chatty server.</p>
+        </div>
+    };
+
+    private string SetupSummaryText = "This is where you can review your setup configuration. The system is ready to be finalized.";
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (Config.IsSetUp && !string.IsNullOrEmpty(Config.PassKey))
+        {
+            Navigation.NavigateTo("/");
+            return;
+        }
+        SystemCheckResult = await SystemCheck.CheckAsync();
+        if (!string.IsNullOrEmpty(Config.MySqlAddr)) DbHost = Config.MySqlAddr;
+        if (Config.MySqlPort > 0) DbPort = Config.MySqlPort.ToString();
+        if (!string.IsNullOrEmpty(Config.MySqlUser)) DbUser = Config.MySqlUser;
+        if (!string.IsNullOrEmpty(Config.MySqlPass)) DbPass = Config.MySqlPass;
+        if (!string.IsNullOrEmpty(Config.MySqlDatabase)) DbName = Config.MySqlDatabase;
+        if (!string.IsNullOrEmpty(Config.ChattyWebEndpoint)) WebEndpoint = Config.ChattyWebEndpoint;
+        if (!string.IsNullOrEmpty(Config.ChattyHostName)) HostName = Config.ChattyHostName;
+    }
+
+    private void StartSetup() { ShowWelcome = false; CurrentStep = 0; }
+
+    private string GetStepTitle() => CurrentStep switch
+    {
+        0 => "System Environment Check",
+        1 => "Create Access Password",
+        2 => "Database Configuration",
+        3 => "Initialize Database",
+        4 => "Additional Settings",
+        5 => "Download Server & Web Frontend",
+        6 => "Setup Summary",
+        7 => "Finalize",
+        _ => ""
+    };
+
+    private bool CanProceed() => CurrentStep switch
+    {
+        0 => true,
+        1 => !string.IsNullOrEmpty(PassKey) && PassKey == PassKeyConfirm && PassKey.Length >= 4,
+        2 => !string.IsNullOrEmpty(DbHost) && !string.IsNullOrEmpty(DbUser) && DbTestSuccess,
+        3 => DbInitDone,
+        4 => true,
+        5 => DownloadDone,
+        6 => true,
+        7 => true,
+        _ => true
+    };
+
+    private async Task NextStep()
+    {
+        if (CurrentStep == 1)
+        {
+            Config.PassKey = PassKey;
+        }
+        if (CurrentStep == 4)
+        {
+            Config.ChattyWebEndpoint = WebEndpoint;
+            Config.ChattyHostName = HostName;
+        }
+        CurrentStep++;
+    }
+
+    private async Task PreviousStep()
+    {
+        if (CurrentStep > 0) { CurrentStep--; }
+    }
+
+    private async Task FinishSetup()
+    {
+        Config.IsSetUp = true;
+        if (!string.IsNullOrEmpty(PassKey)) Config.PassKey = PassKey;
+        Config.MySqlAddr = DbHost;
+        Config.MySqlPort = ushort.Parse(DbPort);
+        Config.MySqlUser = DbUser;
+        Config.MySqlPass = DbPass;
+        Config.MySqlDatabase = DbName;
+        Config.ChattyWebEndpoint = WebEndpoint;
+        Config.ChattyHostName = HostName;
+        await StagerConfig.Flush(Config);
+        SetupComplete = true;
+        CompletionText = "All settings have been saved. Redirecting you to the dashboard...";
+    }
+
+    private async Task TestDbConnection()
+    {
+        IsBusy = true;
+        DbTestMessage = "Testing...";
+        Config.MySqlAddr = DbHost;
+        Config.MySqlPort = ushort.Parse(DbPort);
+        Config.MySqlUser = DbUser;
+        Config.MySqlPass = DbPass;
+        Config.MySqlDatabase = DbName;
+        DBConnectionHelper.Initialize(Config);
+        var result = await DBConnectionHelper.TestConnectionAsync();
+        DbTestSuccess = result.Success;
+        DbTestMessage = result.Message;
+        IsBusy = false;
+    }
+
+    private async Task InitializeDatabase()
+    {
+        IsBusy = true;
+        DbInitMessage = "Initializing database...";
+        var initSqlPath = Path.Combine(Directory.GetCurrentDirectory(), "..", "init.sql");
+        if (!File.Exists(initSqlPath))
+            initSqlPath = Path.Combine(Directory.GetCurrentDirectory(), "init.sql");
+        var result = await DBConnectionHelper.InitializeDatabaseFromSqlFileAsync(initSqlPath);
+        DbInitDone = result.Success;
+        DbInitMessage = result.Message;
+        IsBusy = false;
+    }
+
+    private async Task StartDownload(string artifactName, string extractDir)
+    {
+        IsBusy = true;
+        DownloadLog = $"Starting download of {artifactName}...\n";
+        var progress = new Progress<DownloadProgressEventArgs>(p =>
+        {
+            DownloadStatus = p.StatusMessage;
+            DownloadProgress = p.Percentage;
+            DownloadLog += $"[{p.Percentage}%] {p.StatusMessage}\n";
+            InvokeAsync(StateHasChanged);
+        });
+        var extractPath = Path.Combine(Directory.GetCurrentDirectory(), extractDir);
+        var result = await GitHub.DownloadAndExtractArtifactAsync(artifactName, extractPath, progress);
+        DownloadLog += result.success ? "✅ " + result.message + "\n" : "❌ " + result.message + "\n";
+        DownloadDone = result.success;
+        DownloadStatus = result.message;
+        IsBusy = false;
+    }
+
+    private async Task DownloadAll()
+    {
+        DownloadLog = "";
+        DownloadDone = false;
+        await StartDownload("server-dist", "backend");
+        if (DownloadDone)
+            await StartDownload("webapp-dist", "wwwroot");
+    }
 }
