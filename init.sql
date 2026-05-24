@@ -212,3 +212,15 @@ CREATE TABLE `users` (
 /*M!100616 SET NOTE_VERBOSITY=@OLD_NOTE_VERBOSITY */;
 
 -- Dump completed on 2026-05-04 15:18:12
+-- manual input: start procedures
+
+delimiter ::
+create procedure ban_user(in target int ) begin
+    update users set disabled = 1 where users.id = target;
+end ::
+create procedure unban_user(in target int) begin
+    update users set disabled = 0 where users.id = target;
+end ::
+delimiter ;
+
+-- end procedures

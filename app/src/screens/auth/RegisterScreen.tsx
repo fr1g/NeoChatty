@@ -3,6 +3,8 @@ import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, ActivityInd
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { useAuth } from '../../context/AuthContext';
+import { ServerConfigModal } from '../../components/ServerConfigModal';
+import { getClient } from '../../api/client';
 const RegisterScreen: React.FC = () => {
     const navigation = useNavigation<any>();
     const { register } = useAuth();
@@ -11,6 +13,7 @@ const RegisterScreen: React.FC = () => {
     const [password, setPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
     const [loading, setLoading] = useState(false);
+    const [showServerModal, setShowServerModal] = useState(false);
     const handleRegister = async () => {
         if (!username.trim()) {
             Alert.alert('Notice', 'Please enter a username');
@@ -45,6 +48,15 @@ const RegisterScreen: React.FC = () => {
         finally {
             setLoading(false);
         }
+    };
+
+    const handleServerConfigConfirm = () => {
+        setShowServerModal(false);
+        Alert.alert(
+            'Configuration Changed',
+            'Server configuration has been saved. Please restart the app to apply changes.',
+            [{ text: 'OK' }]
+        );
     };
     return (<View style={styles.container}>
 
@@ -93,8 +105,24 @@ const RegisterScreen: React.FC = () => {
                     <Text style={styles.linkText}>Already have an account?</Text>
                     <Text style={styles.linkTextBold}>Sign in</Text>
                 </TouchableOpacity>
+
+                <TouchableOpacity
+                    style={styles.serverLinkRow}
+                    onPress={() => setShowServerModal(true)}
+                    activeOpacity={0.6}
+                >
+                    <Text style={styles.serverLinkText}>Change Server</Text>
+                </TouchableOpacity>
             </ScrollView>
         </KeyboardAvoidingView>
+
+        <ServerConfigModal
+            visible={showServerModal}
+            currentEndpoint={getClient()?.config?.endpoint ?? ''}
+            currentUseHttps={getClient()?.config?.useHttps ?? false}
+            onClose={() => setShowServerModal(false)}
+            onConfirm={handleServerConfigConfirm}
+        />
     </View>);
 };
 const styles = StyleSheet.create({
@@ -235,6 +263,17 @@ const styles = StyleSheet.create({
         fontSize: 15,
         fontWeight: '700',
         marginLeft: 4,
+    },
+    serverLinkRow: {
+        flexDirection: 'row',
+        justifyContent: 'center',
+        marginTop: 16,
+    },
+    serverLinkText: {
+        color: '#1277d6',
+        fontSize: 13,
+        fontWeight: '600',
+        textDecorationLine: 'underline',
     },
 });
 export default RegisterScreen;

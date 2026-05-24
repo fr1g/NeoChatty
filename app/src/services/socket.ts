@@ -1,7 +1,6 @@
 import { io, Socket } from 'socket.io-client';
 import { getTokens } from '../api/client';
-import { SOCKET_BASE_URL } from '../config/network';
-const BASE_URL = SOCKET_BASE_URL;
+import { getClient } from '../api/client';
 let socket: Socket | null = null;
 let reconnectCallback: (() => void) | null = null;
 let isFirstConnect = true;
@@ -11,8 +10,12 @@ export function setOnReconnect(cb: () => void) {
 export async function connect(): Promise<Socket> {
     const tokens = await getTokens();
     const token = tokens?.accessToken ?? '';
+
+    const client = getClient();
+    const socketUrl = client.config.getSocket();
+
     isFirstConnect = true;
-    socket = io(BASE_URL, {
+    socket = io(socketUrl, {
         auth: { token },
         reconnection: true,
         reconnectionDelay: 1000,

@@ -2,6 +2,7 @@ import { ApiResponse, ConstructClient } from "chatty-sdk";
 
 import { ChattyClient, ChattyClientConfig, DEFAULT_CLIENT_CONFIG } from 'chatty-sdk';
 import { getter, remover, setter } from "./mapio";
+import { readServerConfig } from "./serverConfig";
 
 import * as LegacyFileSystem from 'expo-file-system/legacy';
 
@@ -82,20 +83,9 @@ async function uploadWithNativeTask(file: UploadFilePayload, onUploadProgress?: 
 }
 
 async function tryReadConfigAsync(): Promise<ChattyClientConfig | null> {
-    const raw = await getter('chattyClientConfig');
-    if (!raw) return null;
-    try {
-        let parsed = parseJsonSafely<ChattyClientConfig>(raw);
-
-        if (!(parsed instanceof ChattyClientConfig)) {
-            throw new Error(`CCC read got wrong type. read value: ${parsed}`);
-        }
-
-        parsed = new ChattyClientConfig(parsed.useHttps, parsed.endpoint);
-        if (parsed.endpoint && (typeof parsed.useHttps === "boolean")) return parsed;
-    } catch (error) {
-        console.warn("Failed to parse client config from localStorage, using default. Error:", error);
-        return null;
+    const customConfig = await readServerConfig();
+    if (customConfig) {
+        return customConfig;
     }
     return null;
 }

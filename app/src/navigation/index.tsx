@@ -16,6 +16,7 @@ import FriendRequestListScreen from '../screens/contacts/FriendRequestListScreen
 import UserSearchScreen from '../screens/contacts/UserSearchScreen';
 import UserProfileScreen from '../screens/contacts/UserProfileScreen';
 import BlacklistScreen from '../screens/contacts/BlacklistScreen';
+import AddCodeScreen from '../screens/contacts/AddCodeScreen';
 import MyProfileScreen from '../screens/profile/MyProfileScreen';
 import EditProfileScreen from '../screens/profile/EditProfileScreen';
 import ChangePasswordScreen from '../screens/profile/ChangePasswordScreen';
@@ -37,6 +38,7 @@ export type RootStackParamList = {
         userId: number;
     };
     Blacklist: undefined;
+    AddCode: undefined;
     EditProfile: undefined;
     ChangePassword: undefined;
     PrivacySettings: undefined;
@@ -121,6 +123,7 @@ export default function Navigation() {
                     <Stack.Screen name="UserSearch" component={UserSearchScreen} options={{ title: 'Search Users' }} />
                     <Stack.Screen name="UserProfile" component={UserProfileScreen} options={{ title: 'User Profile' }} />
                     <Stack.Screen name="Blacklist" component={BlacklistScreen} options={{ title: 'Blocklist' }} />
+                    <Stack.Screen name="AddCode" component={AddCodeScreen} options={{ title: 'Add by Code' }} />
                     <Stack.Screen name="EditProfile" component={EditProfileScreen} options={{ title: 'Edit Profile' }} />
                     <Stack.Screen name="ChangePassword" component={ChangePasswordScreen} options={{ title: 'Change Password' }} />
                     <Stack.Screen name="PrivacySettings" component={PrivacySettingsScreen} options={{ title: 'Privacy Settings' }} />

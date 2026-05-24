@@ -1,15 +1,15 @@
 // import { ChattyClient } from "chatty-sdk";
-import { Client } from "chatty-sdk";
+import { ChattyClient, Client } from "chatty-sdk";
 import { setter, getter, remover } from "./mapio";
 // import { constructed } from ".";
 
-let client: any = null;
+let client: ChattyClient | null = null;
 
-export function setClient(c: any) {
+export function setClient(c: ChattyClient) {
     client = c;
 }
 
-export function getClient() {
+export function getClient(): ChattyClient {
     if (!client) {
         throw new Error('Client not initialized. Call initializeClient() first.');
     }

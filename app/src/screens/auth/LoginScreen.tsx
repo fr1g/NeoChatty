@@ -3,12 +3,15 @@ import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, ActivityInd
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { useAuth } from '../../context/AuthContext';
+import { ServerConfigModal } from '../../components/ServerConfigModal';
+import { getClient } from '../../api/client';
 const LoginScreen: React.FC = () => {
     const navigation = useNavigation<any>();
     const { login } = useAuth();
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
     const [loading, setLoading] = useState(false);
+    const [showServerModal, setShowServerModal] = useState(false);
     const handleLogin = async () => {
         if (!username.trim() || !password.trim()) {
             Alert.alert('Notice', 'Please enter a username and password');
@@ -25,6 +28,15 @@ const LoginScreen: React.FC = () => {
         finally {
             setLoading(false);
         }
+    };
+
+    const handleServerConfigConfirm = () => {
+        setShowServerModal(false);
+        Alert.alert(
+            'Configuration Changed',
+            'Server configuration has been saved. Please restart the app to apply changes.',
+            [{ text: 'OK' }]
+        );
     };
     return (<View style={styles.container}>
 
@@ -63,8 +75,24 @@ const LoginScreen: React.FC = () => {
                     <Text style={styles.linkText}>No account yet?</Text>
                     <Text style={styles.linkTextBold}>Create one now</Text>
                 </TouchableOpacity>
+
+                <TouchableOpacity
+                    style={styles.serverLinkRow}
+                    onPress={() => setShowServerModal(true)}
+                    activeOpacity={0.6}
+                >
+                    <Text style={styles.serverLinkText}>Change Server</Text>
+                </TouchableOpacity>
             </ScrollView>
         </KeyboardAvoidingView>
+
+        <ServerConfigModal
+            visible={showServerModal}
+            currentEndpoint={getClient()?.config?.endpoint ?? ''}
+            currentUseHttps={getClient()?.config?.useHttps ?? false}
+            onClose={() => setShowServerModal(false)}
+            onConfirm={handleServerConfigConfirm}
+        />
     </View>);
 };
 const styles = StyleSheet.create({
@@ -208,6 +236,17 @@ const styles = StyleSheet.create({
         fontSize: 15,
         fontWeight: '700',
         marginLeft: 4,
+    },
+    serverLinkRow: {
+        flexDirection: 'row',
+        justifyContent: 'center',
+        marginTop: 16,
+    },
+    serverLinkText: {
+        color: '#1277d6',
+        fontSize: 13,
+        fontWeight: '600',
+        textDecorationLine: 'underline',
     },
 });
 export default LoginScreen;
