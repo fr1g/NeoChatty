@@ -1,8 +1,70 @@
 ﻿@page "/Setup"
+@rendermode InteractiveServer
+
+@using System.Text.RegularExpressions
+@using ChattyStager.Components.Parts
+@using ChattyStager.Helpers
+
 <PageTitle>Setup</PageTitle>
-<h3 class="text-3xl">Setup</h3>
+<div id="setup" class="h-full flex flex-col ">
+    <div id="setup-render" class="flex grow items-center justify-items-center justify-center gap-1.5 h-full">
+        @StepsRender()
+    </div>
+    <div id="setup-controller" class="grid grid-cols-3 gap-1.5 p-5">
+        <Button OnClick="@(() => DoPageChangeCallback(false))">Prev</Button>
+        <div class="bg-slate-50 shadow font-mono grid items-center justify-items-center">
+            <p class="w-full text-center my-auto">
+                @Step / @MaxSteps
+            </p>
+        </div>
+        <button @onclick="() => DoPageChangeCallback()">Next</button>
+    </div>
+</div>
 
 @code{
+    public int Step { get; set; }
+    public const int MaxSteps = 7;
 
+    public void DoPageChangeCallback(bool next = true)
+    {
+        Console.WriteLine(Step);
+        var temp = Step;
+        if (next) temp++;
+        else if (temp > 0) temp--;
+        else temp = 0;
+        Step = temp;
+        StateHasChanged();
+    }
+
+    protected RenderFragment StepsRender()
+        => Step switch
+        {
+            1 => @<div>
+                    
+                 </div>,
+
+            _ => @<div>
+                     <h1 class="w-full text-center text-3xl font-bold">Welcome to Chatty</h1>
+                     <p class="text-center text-lg">This is the Chatty Stager - Stager will guide you to set up your
+                         Chatty services.</p>
+                 </div>
+        };
+
+    private async Task CheckSpecs() // check if the host has required stuffs
+    {
+        const string nodePattern = @"^v\d+\.\d+\.\d+$";
+        Regex nodeRegex = new(nodePattern);
+        
+        using var cmd = new CommandHelper();
+        // checking mysql or mariadb
+        await cmd.StartAsync("mysql -V");
+        var dbResultInfo = cmd.LatestOutputLines[^1].Split("from ")[1].Split(", ")[0];
+        Console.WriteLine(dbResultInfo, dbResultInfo.Length);
+
+        await cmd.StartAsync("node --version");
+        var nodeResultInfo = cmd.LatestOutputLines[^1];
+        Console.WriteLine(nodeResultInfo, nodeRegex.IsMatch(nodeResultInfo));
+
+    }
 
 }

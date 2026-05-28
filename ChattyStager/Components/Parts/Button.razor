@@ -1,5 +1,74 @@
-﻿<h3>Button</h3>
+﻿@using Microsoft.AspNetCore.Components.Web
+@code{
+
+    public enum ButtonMode
+    {
+        Button,
+        Anchor
+    }
+
+}
+@if (IsAnchor)
+{
+    <a
+        class="@CssClass"
+        href="@(IsAnchor ? Href : null)"
+        target="@(IsAnchor ? Target : null)"
+        disabled="@(IsButton ? Disabled : null)"
+        @onclick="@OnClick"
+        @onclick:preventDefault="@(!IsAnchor || string.IsNullOrEmpty(Href))"
+        @attributes="AdditionalAttributes">
+        @ChildContent
+    </a>
+}
+else
+{
+    <button
+        class="@CssClass"
+        href="@(IsAnchor ? Href : null)"
+        target="@(IsAnchor ? Target : null)"
+        disabled="@(IsButton ? Disabled : null)"
+        @onclick="@OnClick"
+        @onclick:preventDefault="@(!IsAnchor || string.IsNullOrEmpty(Href))"
+        @attributes="AdditionalAttributes">
+        @ChildContent
+    </button>
+}
 
 @code {
     
+    [Parameter] public ButtonMode Mode { get; set; } = ButtonMode.Button;
+    
+    [Parameter] public string? Href { get; set; }
+    
+    [Parameter] public string? Target { get; set; }
+
+    [Parameter] public bool Disabled { get; set; }
+
+    [Parameter] public EventCallback<MouseEventArgs> OnClick { get; set; }
+
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    [Parameter] public string? Class { get; set; }
+
+    [Parameter(CaptureUnmatchedValues = true)] public Dictionary<string, object>? AdditionalAttributes { get; set; }
+
+    private bool IsButton => Mode == ButtonMode.Button;
+    private bool IsAnchor => Mode == ButtonMode.Anchor;
+
+    private string CssClass
+    {
+        get
+        {
+            var baseClasses = "inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-500 hover:bg-blue-600 active:bg-blue-600/60 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors";
+            
+            if (Disabled)
+                baseClasses += " pointer-events-none opacity-50";
+            
+            if (!string.IsNullOrEmpty(Class))
+                baseClasses += " " + Class;
+            
+            return baseClasses;
+        }
+    }
 }
