@@ -1,4 +1,4 @@
 # dev env block chatty webapp build items
 ./assets/
-./index.html
+/index.html
 ./vite.svg
