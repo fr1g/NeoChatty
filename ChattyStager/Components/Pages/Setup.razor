@@ -17,30 +17,41 @@
                 @Step / @MaxSteps
             </p>
         </div>
-        <button @onclick="() => DoPageChangeCallback()">Next</button>
+        <Button OnClick="@(() => DoPageChangeCallback())" Disabled="@(!AllowNextStep)">Next</Button>
     </div>
 </div>
 
 @code{
+    // steps: 0: welcome; 1: check specs; 2: set DB; 3: download builds; 4: basic settings; 5: apply config; 6: ending
     public int Step { get; set; }
-    public const int MaxSteps = 7;
+    public const int MaxSteps = 6;
+    public (string mysqlVersion, string nodeVersion)? Results { get; set; }
+    public bool AllowNextStep = true;
 
     public void DoPageChangeCallback(bool next = true)
     {
-        Console.WriteLine(Step);
+        // Console.WriteLine(Step);
         var temp = Step;
-        if (next) temp++;
+        if (next && temp != MaxSteps) temp++;
         else if (temp > 0) temp--;
         else temp = 0;
         Step = temp;
+        AllowNextStep = Step switch
+        {
+            0 or MaxSteps => true,
+            _ => false
+        };
         StateHasChanged();
     }
 
     protected RenderFragment StepsRender()
-        => Step switch
+    {
+        return Step switch
         {
-            1 => @<div>
-                    
+            1 => @<div class="">
+                     <p>
+                         @(Results == null ? "Checking if you have installed right dependencies..." : "Checks done:")
+                     </p>
                  </div>,
 
             _ => @<div>
@@ -49,9 +60,24 @@
                          Chatty services.</p>
                  </div>
         };
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        switch (Step)
+        {
+            case 1:
+                await CheckSpecs();
+                break;
+        }
+        await base.OnAfterRenderAsync(firstRender);
+    }
+
 
     private async Task CheckSpecs() // check if the host has required stuffs
     {
+        Console.WriteLine("Checking specs");
+        
         const string nodePattern = @"^v\d+\.\d+\.\d+$";
         Regex nodeRegex = new(nodePattern);
         
@@ -59,11 +85,11 @@
         // checking mysql or mariadb
         await cmd.StartAsync("mysql -V");
         var dbResultInfo = cmd.LatestOutputLines[^1].Split("from ")[1].Split(", ")[0];
-        Console.WriteLine(dbResultInfo, dbResultInfo.Length);
+        Console.WriteLine($"{dbResultInfo}, {dbResultInfo.Length}");
 
         await cmd.StartAsync("node --version");
         var nodeResultInfo = cmd.LatestOutputLines[^1];
-        Console.WriteLine(nodeResultInfo, nodeRegex.IsMatch(nodeResultInfo));
+        Console.WriteLine($"{nodeResultInfo}, {nodeRegex.IsMatch(nodeResultInfo)}, {cmd.LatestOutputLines.Count}");
 
     }
 

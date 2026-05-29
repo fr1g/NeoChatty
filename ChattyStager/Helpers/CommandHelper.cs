@@ -18,7 +18,7 @@ public sealed class CommandHelper : IDisposable
     private bool _disposed;
     
     public IReadOnlyList<string> LatestOutputLines => _allOutputLines.ToArray();
-    
+
     public IAsyncEnumerable<string> OutputStream => _outputChannel.Reader.ReadAllAsync();
     
     public bool IsRunning => _process is { HasExited: false };
@@ -30,14 +30,7 @@ public sealed class CommandHelper : IDisposable
         _outputChannel = Channel.CreateUnbounded<string>();
         _processCts = new CancellationTokenSource();
     }
-
-    /// <summary>
-    /// 启动 Shell 命令。
-    /// </summary>
-    /// <param name="command">完整的 Shell 命令字符串（支持管道、重定向等）</param>
-    /// <param name="workingDirectory">工作目录（可选）</param>
-    /// <param name="cancellationToken">外部取消令牌</param>
-    /// <returns></returns>
+    
     public async Task StartAsync(string command, string? workingDirectory = null, CancellationToken cancellationToken = default)
     {
         if (IsRunning)
@@ -80,8 +73,12 @@ public sealed class CommandHelper : IDisposable
         _process.Start();
 
         // 开始异步读取输出流（合并 stdout 和 stderr）
-        _outputReaderTask = Task.Run(() => ReadOutputStreamsAsync(_process, _outputChannel.Writer, _processCts.Token));
+        _outputReaderTask = Task.Run(() => ReadOutputStreamsAsync(_process, _outputChannel.Writer, _processCts.Token), cancellationToken);
+        // return await ReadOutputStreamsAsync(_process, _outputChannel.Writer, _processCts.Token);
+        await _process.WaitForExitAsync(cancellationToken);
+        await _outputReaderTask;
     }
+    
     
     public async Task StopAsync()
     {
@@ -129,13 +126,13 @@ public sealed class CommandHelper : IDisposable
         }
     }
 
-    private async Task ReadStreamAsync(System.IO.StreamReader reader, ChannelWriter<string> writer, CancellationToken cancellationToken)
+    private async Task ReadStreamAsync(StreamReader reader, ChannelWriter<string> writer, CancellationToken cancellationToken)
     {
         try
         {
             while (!cancellationToken.IsCancellationRequested)
             {
-                var line = await reader.ReadLineAsync();
+                var line = await reader.ReadLineAsync(cancellationToken);
                 if (line == null)
                     break;
                 
