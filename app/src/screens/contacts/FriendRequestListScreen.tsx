@@ -91,14 +91,6 @@ export default function FriendRequestListScreen() {
             </TouchableOpacity>))}
         </View>
 
-        <TouchableOpacity
-            style={styles.addCodeBtn}
-            onPress={() => navigation.navigate('AddCode')}
-            activeOpacity={0.7}
-        >
-            <Text style={styles.addCodeBtnText}>+ Add by Code</Text>
-        </TouchableOpacity>
-
         {loading ? (<ActivityIndicator style={{ marginTop: 40 }} color={PRIMARY} />) : (<FlatList data={list} keyExtractor={(item) => String(item.id)} renderItem={renderItem} contentContainerStyle={list.length === 0 && styles.emptyList} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={PRIMARY} />} ListEmptyComponent={<Text style={styles.emptyText}>No requests yet</Text>} />)}
     </View>);
 }
@@ -121,20 +113,6 @@ const styles = StyleSheet.create({
     },
     tabText: { fontSize: 15, color: '#999' },
     tabTextActive: { color: PRIMARY, fontWeight: '600' },
-    addCodeBtn: {
-        backgroundColor: PRIMARY,
-        paddingVertical: 12,
-        paddingHorizontal: 16,
-        marginHorizontal: 12,
-        marginVertical: 10,
-        borderRadius: 6,
-        alignItems: 'center',
-    },
-    addCodeBtnText: {
-        color: '#fff',
-        fontSize: 14,
-        fontWeight: '600',
-    },
     row: {
         flexDirection: 'row',
         alignItems: 'center',

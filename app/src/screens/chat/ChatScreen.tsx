@@ -207,7 +207,7 @@ const ChatScreen: React.FC = () => {
                 uri: prepared.uri,
                 name: prepared.fileName,
                 type: prepared.mimeType,
-            }, (p) => setUploadProgress(p));
+            }, (p: any) => setUploadProgress(p));
             const data = res.data.data;
             if (!data)
                 throw new Error('Upload failed');

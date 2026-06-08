@@ -81,6 +81,11 @@ const LoginScreen: React.FC = () => {
                     onPress={() => setShowServerModal(true)}
                     activeOpacity={0.6}
                 >
+                    <Text style={styles.serverCurrentText}>
+                        {getClient()?.config?.endpoint
+                            ? `${getClient()!.config!.useHttps ? 'https' : 'http'}://${getClient()!.config!.endpoint}`
+                            : 'Default server'}
+                    </Text>
                     <Text style={styles.serverLinkText}>Change Server</Text>
                 </TouchableOpacity>
             </ScrollView>
@@ -238,9 +243,14 @@ const styles = StyleSheet.create({
         marginLeft: 4,
     },
     serverLinkRow: {
-        flexDirection: 'row',
+        alignItems: 'center',
         justifyContent: 'center',
         marginTop: 16,
+    },
+    serverCurrentText: {
+        color: '#6B7280',
+        fontSize: 12,
+        marginBottom: 4,
     },
     serverLinkText: {
         color: '#1277d6',

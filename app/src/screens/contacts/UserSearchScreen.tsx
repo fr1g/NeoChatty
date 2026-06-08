@@ -1,16 +1,19 @@
 import React, { useState, useRef, useCallback } from 'react';
-import { View, Text, TextInput, FlatList, TouchableOpacity, StyleSheet, Image, Alert, ActivityIndicator, } from 'react-native';
+import { View, Text, TextInput, FlatList, TouchableOpacity, StyleSheet, Image, Alert, ActivityIndicator, KeyboardAvoidingView, Platform, } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../../navigation';
 import { users, files } from '../../api';
 import { UserProfile } from '../../types';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 type Nav = NativeStackNavigationProp<RootStackParamList>;
 const PRIMARY = '#1277d6';
 const PAGE_SIZE = 20;
 export default function UserSearchScreen() {
     const navigation = useNavigation<Nav>();
+    const bottomSpace = useSafeAreaInsets().bottom;
+
     const [query, setQuery] = useState('');
     const [results, setResults] = useState<UserProfile[]>([]);
     const [loading, setLoading] = useState(false);
@@ -97,28 +100,44 @@ export default function UserSearchScreen() {
         </View>
         <Ionicons name="chevron-forward" size={20} color="#D1D5DB" />
     </TouchableOpacity>);
-    return (<View style={styles.container}>
-
-        <View style={styles.headerArea}>
-            <View style={styles.searchBar}>
-                <Ionicons name="search" size={20} color="#9CA3AF" style={styles.searchIcon} />
-                <TextInput style={styles.input} placeholder="Search for new friends" placeholderTextColor="#9CA3AF" value={query} onChangeText={onChangeText} autoFocus returnKeyType="search" autoCapitalize="none" />
-                {query.length > 0 && (<TouchableOpacity onPress={clearSearch} style={styles.clearBtn} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-                    <Ionicons name="close-circle" size={18} color="#D1D5DB" />
-                </TouchableOpacity>)}
+    return (
+        <KeyboardAvoidingView
+            style={styles.container}
+            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+            keyboardVerticalOffset={Platform.OS === 'ios' ? 88 : 0}
+        >
+            <View style={styles.headerArea}>
+                <View style={styles.searchBar}>
+                    <Ionicons name="search" size={20} color="#9CA3AF" style={styles.searchIcon} />
+                    <TextInput style={styles.input} placeholder="Search for new friends" placeholderTextColor="#9CA3AF" value={query} onChangeText={onChangeText} autoFocus returnKeyType="search" autoCapitalize="none" />
+                    {query.length > 0 && (<TouchableOpacity onPress={clearSearch} style={styles.clearBtn} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+                        <Ionicons name="close-circle" size={18} color="#D1D5DB" />
+                    </TouchableOpacity>)}
+                </View>
             </View>
-        </View>
 
+            {loading ? (<ActivityIndicator style={{ marginTop: 40 }} color={PRIMARY} size="large" />) : (<FlatList data={results} keyExtractor={(item) => String(item.id)} renderItem={renderItem} contentContainerStyle={[styles.listContent, results.length === 0 && styles.emptyContainer]} showsVerticalScrollIndicator={false} ListEmptyComponent={<View style={styles.emptyWrap}>
+                <Ionicons name="search-outline" size={64} color="#E5E7EB" style={{ marginBottom: 16 }} />
+                <Text style={styles.emptyText}>
+                    {searched ? 'No matching users found' : 'Enter a Chatty ID or display name to search'}
+                </Text>
+            </View>} ListFooterComponent={hasMore ? (<TouchableOpacity style={styles.loadMoreBtn} onPress={loadMore} disabled={loadingMore} activeOpacity={0.7}>
+                {loadingMore ? (<ActivityIndicator color={PRIMARY} size="small" />) : (<Text style={styles.loadMoreText}>Load more</Text>)}
+            </TouchableOpacity>) : null} />)}
 
-        {loading ? (<ActivityIndicator style={{ marginTop: 40 }} color={PRIMARY} size="large" />) : (<FlatList data={results} keyExtractor={(item) => String(item.id)} renderItem={renderItem} contentContainerStyle={[styles.listContent, results.length === 0 && styles.emptyContainer]} showsVerticalScrollIndicator={false} ListEmptyComponent={<View style={styles.emptyWrap}>
-            <Ionicons name="search-outline" size={64} color="#E5E7EB" style={{ marginBottom: 16 }} />
-            <Text style={styles.emptyText}>
-                {searched ? 'No matching users found' : 'Enter a Chatty ID or display name to search'}
-            </Text>
-        </View>} ListFooterComponent={hasMore ? (<TouchableOpacity style={styles.loadMoreBtn} onPress={loadMore} disabled={loadingMore} activeOpacity={0.7}>
-            {loadingMore ? (<ActivityIndicator color={PRIMARY} size="small" />) : (<Text style={styles.loadMoreText}>Load more</Text>)}
-        </TouchableOpacity>) : null} />)}
-    </View>);
+            {/* Floating "Add by Code" button */}
+            <View style={{ ...styles.floatingBtnContainer, marginBottom: bottomSpace }}>
+                <TouchableOpacity
+                    style={styles.floatingBtn}
+                    onPress={() => navigation.navigate('AddCode')}
+                    activeOpacity={0.8}
+                >
+                    <Ionicons name="qr-code-outline" size={20} color="#fff" style={{ marginRight: 8 }} />
+                    <Text style={styles.floatingBtnText}>Add by Code</Text>
+                </TouchableOpacity>
+            </View>
+        </KeyboardAvoidingView>
+    );
 }
 const styles = StyleSheet.create({
     container: {
@@ -234,5 +253,30 @@ const styles = StyleSheet.create({
         fontSize: 14,
         color: PRIMARY,
         fontWeight: '600',
+    },
+    floatingBtnContainer: {
+        paddingHorizontal: 16,
+        paddingVertical: 12,
+        backgroundColor: '#F3F4F6',
+        borderTopWidth: StyleSheet.hairlineWidth,
+        borderTopColor: '#E5E7EB',
+    },
+    floatingBtn: {
+        flexDirection: 'row',
+        backgroundColor: PRIMARY,
+        paddingVertical: 14,
+        borderRadius: 14,
+        alignItems: 'center',
+        justifyContent: 'center',
+        shadowColor: PRIMARY,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 8,
+        elevation: 6,
+    },
+    floatingBtnText: {
+        color: '#fff',
+        fontSize: 16,
+        fontWeight: '700',
     },
 });

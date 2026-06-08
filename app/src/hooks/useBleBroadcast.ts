@@ -1,22 +1,16 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
-import { BleManager, Device, Subscription } from 'react-native-ble-plx';
 import {
     extractFriendDataFromDevice,
     checkBluetoothPermissions,
     requestBluetoothPermissions,
     startBleScan,
-    stopBleScan,
     startBleAdvertising,
-    stopBleAdvertising,
     isAdvertisementDataValid,
     isBle5Supported,
-    BLE5_UNSUPPORTED_MESSAGE,
+    isBleActuallyAvailable,
     BleFriendData,
+    AdvertisingHandle,
 } from '../utils/bleUtil';
-
-/* 
- this is abstracted. need to be replaced by munim
-*/
 
 
 export interface UseBleAdOptions {
@@ -40,189 +34,198 @@ export interface UseBleAdReturn {
     isLoading: boolean;
     error: string | null;
     isBle5Supported: boolean;
+    isBleActuallyAvailable: boolean;
     hasBluetoothPermission: boolean;
     discoveredFriends: DiscoveredFriend[];
     refreshFriends: () => void;
     requestPermissions: () => Promise<boolean>;
 }
 
-/**
- * Hook for BLE Advertisement and scanning
- */
+const SCAN_DURATION_MS = 10_000;
+const AUTO_REFRESH_INTERVAL_MS = 15_000;
+const DEVICE_STALE_THRESHOLD_MS = 16_000;
+
+
+
+// Hook
 export function useBleBroadcast(options: UseBleAdOptions): UseBleAdReturn {
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [ble5Supported, setBle5Supported] = useState(() => isBle5Supported());
+    const [bleActuallyAvailable, setBleActuallyAvailable] = useState(false);
     const [hasBluetoothPermission, setHasBluetoothPermission] = useState(false);
     const [discoveredFriends, setDiscoveredFriends] = useState<DiscoveredFriend[]>([]);
 
-    const bleManagerRef = useRef<BleManager | null>(null);
-    const stateSubscriptionRef = useRef<Subscription | null>(null);
-    const scanSubscriptionRef = useRef<Subscription | null>(null);
-    const scanTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-    const autoRefreshTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+    // Refs for mutable state that shouldn't trigger re-renders
+    const advertisingHandleRef = useRef<AdvertisingHandle | null>(null);
+    const stopScanRef = useRef<(() => void) | null>(null);
+    const scanTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const autoRefreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const discoveredDevicesRef = useRef<Map<string, DiscoveredFriend>>(new Map());
 
-    // init BleManager
-    useEffect(() => {
-        if (!bleManagerRef.current) {
-            bleManagerRef.current = new BleManager();
+    // Track whether the hook is still mounted
+    const mountedRef = useRef(true);
+
+
+    // Permission check
+
+
+    const checkPermissions = useCallback(async (): Promise<boolean> => {
+        const result = await checkBluetoothPermissions();
+        if (!mountedRef.current) return false;
+        setHasBluetoothPermission(result.hasPermission);
+        if (!result.hasPermission && result.missingPermissions.length > 0) {
+            setError(`Missing: ${result.missingPermissions.join(', ')}`);
         }
+        return result.hasPermission;
     }, []);
 
-    // check permission
-    const checkPermissions = useCallback(async () => {
-        const permCheck = await checkBluetoothPermissions();
-        setHasBluetoothPermission(permCheck.hasPermission);
-
-        if (!permCheck.hasPermission) {
-            setError(
-                permCheck.missingPermissions.length > 0
-                    ? `Missing permissions: ${permCheck.missingPermissions.join(', ')}`
-                    : 'Bluetooth permissions required'
-            );
-        }
-
-        return permCheck.hasPermission;
-    }, []);
-
-    // get permission
-    const requestPermissions = useCallback(async () => {
+    const requestPermissions = useCallback(async (): Promise<boolean> => {
         try {
             const granted = await requestBluetoothPermissions();
-            if (granted) {
+            if (granted && mountedRef.current) {
                 await checkPermissions();
             }
             return granted;
         } catch (err) {
-            setError(`Failed to request permissions: ${(err as Error).message}`);
+            if (mountedRef.current) {
+                setError(`Permission error: ${(err as Error).message}`);
+            }
             return false;
         }
     }, [checkPermissions]);
 
-    // start scan
-    const startScan = useCallback(async () => {
-        if (!bleManagerRef.current || !options.enabled || !isBle5Supported()) {
-            return;
-        }
 
-        try {
-            setIsLoading(true);
+    // Scan helpers
 
-            await stopBleScan(bleManagerRef.current);
 
-            // 清除超时的设备（15秒内没有收到更新的设备）
-            const now = Date.now();
-            discoveredDevicesRef.current.forEach((device, deviceId) => {
-                if (now - device.lastSeen > 15000) {
-                    discoveredDevicesRef.current.delete(deviceId);
-                }
-            });
-
-            const subscription = await startBleScan(
-                bleManagerRef.current,
-                (device: Device) => {
-                    const friendData = extractFriendDataFromDevice(device);
-
-                    if (
-                        friendData &&
-                        isAdvertisementDataValid(friendData)
-                    ) {
-                        const existing = discoveredDevicesRef.current.get(friendData.deviceId);
-                        const updated: DiscoveredFriend = {
-                            ...friendData,
-                            userInfo: existing?.userInfo,
-                            lastSeen: Date.now(),
-                        };
-
-                        discoveredDevicesRef.current.set(friendData.deviceId, updated);
-                        setDiscoveredFriends(Array.from(discoveredDevicesRef.current.values()));
-                    }
-                },
-                (err) => {
-                    console.error('BLE scan error:', err);
-                    setError(`Scan error: ${err.message}`);
-                }
-            );
-
-            if (subscription) {
-                scanSubscriptionRef.current = subscription;
+    // Remove stale devices and update state 
+    const purgeStaleDevices = useCallback(() => {
+        const now = Date.now();
+        let changed = false;
+        discoveredDevicesRef.current.forEach((device, deviceId) => {
+            if (now - device.lastSeen > DEVICE_STALE_THRESHOLD_MS) {
+                discoveredDevicesRef.current.delete(deviceId);
+                changed = true;
             }
-
-            // stop after 10s to save time for other ops
-            scanTimeoutRef.current = setTimeout(async () => {
-                await stopBleScan(bleManagerRef.current!);
-            }, 10000);
-        } catch (err) {
-            const errorMsg = (err as Error).message;
-            setError(`Failed to start scan: ${errorMsg}`);
-            console.error('Start scan error:', err);
-        } finally {
-            setIsLoading(false);
+        });
+        if (changed && mountedRef.current) {
+            setDiscoveredFriends(Array.from(discoveredDevicesRef.current.values()));
         }
-    }, [options.enabled]);
+    }, []);
 
-    const refreshFriends = useCallback(async () => {
-        if (autoRefreshTimeoutRef.current) {
-            clearTimeout(autoRefreshTimeoutRef.current);
+    // Run a single scan cycle 
+    const startScan = useCallback(() => {
+        if (!mountedRef.current) return;
+
+        // Stop any existing scan first
+        if (stopScanRef.current) {
+            stopScanRef.current();
+            stopScanRef.current = null;
         }
 
-        await startScan();
+        setIsLoading(true);
 
-        autoRefreshTimeoutRef.current = setTimeout(() => {
-            refreshFriends();
-        }, 15000);
+        // Device-found handler
+        stopScanRef.current = startBleScan((device) => {
+            if (!mountedRef.current) return;
+
+            const friendData = extractFriendDataFromDevice(device);
+            if (!friendData || !isAdvertisementDataValid(friendData)) return;
+
+            const key = friendData.deviceId;
+            const existing = discoveredDevicesRef.current.get(key);
+
+            // If we already have this device with userInfo, preserve it
+            const updated: DiscoveredFriend = {
+                ...friendData,
+                userInfo: existing?.userInfo,
+                lastSeen: Date.now(),
+            };
+
+            discoveredDevicesRef.current.set(key, updated);
+            if (mountedRef.current) {
+                setDiscoveredFriends(Array.from(discoveredDevicesRef.current.values()));
+            }
+        });
+
+        // Auto-stop scan after SCAN_DURATION_MS
+        scanTimerRef.current = setTimeout(() => {
+            if (stopScanRef.current) {
+                stopScanRef.current();
+                stopScanRef.current = null;
+            }
+            purgeStaleDevices();
+            if (mountedRef.current) setIsLoading(false);
+        }, SCAN_DURATION_MS);
+    }, [purgeStaleDevices]);
+
+
+    // Refresh (manual + auto)
+    const refreshFriends = useCallback(() => {
+        // Clear auto-refresh timer
+        if (autoRefreshTimerRef.current) {
+            clearTimeout(autoRefreshTimerRef.current);
+            autoRefreshTimerRef.current = null;
+        }
+
+        startScan();
+
+        // Schedule next auto-refresh
+        autoRefreshTimerRef.current = setTimeout(() => {
+            if (mountedRef.current) refreshFriends();
+        }, AUTO_REFRESH_INTERVAL_MS);
     }, [startScan]);
 
+
+    // Advertising effect
     useEffect(() => {
-        if (!options.enabled || !bleManagerRef.current || !options.userId || !options.addCode) {
-            return;
-        }
+        if (!options.enabled || !options.userId || !options.addCode) return;
+        if (!isBle5Supported()) return;
 
-        if (!isBle5Supported()) {
-            setBle5Supported(false);
-            setError(BLE5_UNSUPPORTED_MESSAGE);
-            return;
-        }
+        let cancelled = false;
 
-        const startAdvertising = async () => {
-            try {
-                const result = await startBleAdvertising(
-                    bleManagerRef.current!,
-                    options.userId,
-                    options.addCode,
-                    options.expirationTimestamp
-                );
+        const doAdvertise = async () => {
+            const result = await startBleAdvertising(
+                options.userId,
+                options.addCode,
+                options.expirationTimestamp,
+            );
+            if (cancelled || !mountedRef.current) return;
 
-                if (!result.success) {
-                    setError(result.message);
-                }
-            } catch (err) {
-                setError(`Failed to initialize BLE advertising: ${(err as Error).message}`);
+            if (result.success && result.handle) {
+                advertisingHandleRef.current = result.handle;
+                if (mountedRef.current) setError(null);
+            } else {
+                if (mountedRef.current) setError(result.message);
             }
         };
 
-        startAdvertising();
+        doAdvertise();
+
+        return () => {
+            cancelled = true;
+            if (advertisingHandleRef.current) {
+                advertisingHandleRef.current.stop();
+                advertisingHandleRef.current = null;
+            }
+        };
     }, [options.enabled, options.userId, options.addCode, options.expirationTimestamp]);
 
+
+    // Main init / teardown effect
     useEffect(() => {
         if (!options.enabled) {
-            // clean up
-            if (scanTimeoutRef.current) {
-                clearTimeout(scanTimeoutRef.current);
+            // Clean up all resources when disabled
+            if (scanTimerRef.current) clearTimeout(scanTimerRef.current);
+            if (autoRefreshTimerRef.current) clearTimeout(autoRefreshTimerRef.current);
+            if (stopScanRef.current) {
+                stopScanRef.current();
+                stopScanRef.current = null;
             }
-            if (autoRefreshTimeoutRef.current) {
-                clearTimeout(autoRefreshTimeoutRef.current);
-            }
-            if (stateSubscriptionRef.current) {
-                stateSubscriptionRef.current.remove();
-            }
-            if (scanSubscriptionRef.current) {
-                scanSubscriptionRef.current.remove();
-            }
-            if (bleManagerRef.current) {
-                stopBleScan(bleManagerRef.current);
-                stopBleAdvertising();
+            if (advertisingHandleRef.current) {
+                advertisingHandleRef.current.stop();
+                advertisingHandleRef.current = null;
             }
             setDiscoveredFriends([]);
             discoveredDevicesRef.current.clear();
@@ -231,51 +234,65 @@ export function useBleBroadcast(options: UseBleAdOptions): UseBleAdReturn {
 
         const initBle = async () => {
             const supported = isBle5Supported();
-            setBle5Supported(supported);
             if (!supported) {
-                setError(BLE5_UNSUPPORTED_MESSAGE);
+                if (mountedRef.current) {
+                    setBle5Supported(false);
+                    setError('Your device does not support Bluetooth 5.0');
+                }
                 return;
+            }
+
+            // Check if BLE is actually available (emulators usually return false)
+            const bleStatus = await isBleActuallyAvailable();
+            if (!bleStatus.available) {
+                if (mountedRef.current) {
+                    setBleActuallyAvailable(false);
+                    setError(bleStatus.reason || 'Bluetooth is not available on this device');
+                }
+                return;
+            }
+            if (mountedRef.current) {
+                setBleActuallyAvailable(true);
             }
 
             const hasPermission = await checkPermissions();
             if (!hasPermission) {
-                setError('Bluetooth permissions not granted');
+                if (mountedRef.current) {
+                    setError('Bluetooth permissions not granted');
+                }
                 return;
             }
 
-            refreshFriends();
+            if (mountedRef.current) {
+                refreshFriends();
+            }
         };
 
         initBle();
 
         return () => {
-            if (scanTimeoutRef.current) {
-                clearTimeout(scanTimeoutRef.current);
-            }
-            if (autoRefreshTimeoutRef.current) {
-                clearTimeout(autoRefreshTimeoutRef.current);
-            }
+            if (scanTimerRef.current) clearTimeout(scanTimerRef.current);
+            if (autoRefreshTimerRef.current) clearTimeout(autoRefreshTimerRef.current);
         };
     }, [options.enabled, checkPermissions, refreshFriends]);
 
+
+    // Final cleanup on unmount
     useEffect(() => {
+        mountedRef.current = true;
         return () => {
-            if (scanTimeoutRef.current) {
-                clearTimeout(scanTimeoutRef.current);
+            mountedRef.current = false;
+            if (scanTimerRef.current) clearTimeout(scanTimerRef.current);
+            if (autoRefreshTimerRef.current) clearTimeout(autoRefreshTimerRef.current);
+            if (stopScanRef.current) {
+                stopScanRef.current();
+                stopScanRef.current = null;
             }
-            if (autoRefreshTimeoutRef.current) {
-                clearTimeout(autoRefreshTimeoutRef.current);
+            if (advertisingHandleRef.current) {
+                advertisingHandleRef.current.stop();
+                advertisingHandleRef.current = null;
             }
-            if (stateSubscriptionRef.current) {
-                stateSubscriptionRef.current.remove();
-            }
-            if (scanSubscriptionRef.current) {
-                scanSubscriptionRef.current.remove();
-            }
-            if (bleManagerRef.current) {
-                stopBleScan(bleManagerRef.current);
-                stopBleAdvertising();
-            }
+            discoveredDevicesRef.current.clear();
         };
     }, []);
 
@@ -283,6 +300,7 @@ export function useBleBroadcast(options: UseBleAdOptions): UseBleAdReturn {
         isLoading,
         error,
         isBle5Supported: ble5Supported,
+        isBleActuallyAvailable: bleActuallyAvailable,
         hasBluetoothPermission,
         discoveredFriends,
         refreshFriends,

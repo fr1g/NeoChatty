@@ -103,6 +103,14 @@ export const ServerConfigModal: React.FC<ServerConfigModalProps> = ({
                         <Text style={styles.description}>
                             Enter the server address (IPv4 or domain only, no protocol or port)
                         </Text>
+                        {Platform.OS === 'android' && (
+                            <Text style={styles.hintText}>
+                                Note: On Android emulator, use 10.0.2.2 instead of
+                                127.0.0.1 to reach the host machine. On a real
+                                device, use your computer's LAN IP (e.g.
+                                192.168.x.x).
+                            </Text>
+                        )}
 
                         <View style={styles.inputSection}>
                             <Text style={styles.label}>Server Address</Text>
@@ -193,8 +201,18 @@ const styles = StyleSheet.create({
     description: {
         fontSize: 13,
         color: '#666',
-        marginBottom: 20,
+        marginBottom: 12,
         lineHeight: 18,
+    },
+    hintText: {
+        fontSize: 12,
+        color: '#856404',
+        backgroundColor: '#FFF3CD',
+        borderRadius: 6,
+        padding: 10,
+        marginBottom: 16,
+        lineHeight: 17,
+        overflow: 'hidden',
     },
     inputSection: {
         marginBottom: 16,

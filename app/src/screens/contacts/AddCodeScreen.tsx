@@ -11,17 +11,16 @@ import {
     FlatList,
     Image,
     Keyboard,
-    Dimensions,
+    ScrollView,
     RefreshControl,
 } from 'react-native';
 import { friends, files } from '../../api';
 import { User } from '../../types';
 import { useBleBroadcast, DiscoveredFriend } from '../../hooks/useBleBroadcast';
 import { useAuth } from '../../context/AuthContext';
+import AntDesign from '@expo/vector-icons/build/AntDesign';
 
 const PRIMARY = '#1277d6';
-const { height: screenHeight } = Dimensions.get('window');
-const UI_HEIGHT = screenHeight * 0.5;
 
 interface SearchResult extends User {
     expireAt: number;
@@ -40,27 +39,28 @@ export default function AddCodeScreen() {
     const { user } = useAuth();
     const userId = user?.id;
 
+
     // My code state
     const [myCode, setMyCode] = useState<number | null>(null);
     const [remainingSeconds, setRemainingSeconds] = useState(30);
     const [myCodeExpireAt, setMyCodeExpireAt] = useState<number>(0);
 
-    // Search state
+
+    // Search (manual code input) state
     const [searchingCode, setSearchingCode] = useState('');
     const [searchResult, setSearchResult] = useState<SearchResult | null>(null);
     const [searchResultCountdown, setSearchResultCountdown] = useState(0);
     const [isSearching, setIsSearching] = useState(false);
     const [searchError, setSearchError] = useState('');
 
-    // Dialog state
-    const [showDialog, setShowDialog] = useState(false);
 
-    // BLE state
+    // BLE nearby discovery state
     const [bleEnabled, setBleEnabled] = useState(true);
     const {
         isLoading: bleLoading,
         error: bleError,
         isBle5Supported,
+        isBleActuallyAvailable,
         hasBluetoothPermission,
         discoveredFriends,
         refreshFriends,
@@ -71,6 +71,11 @@ export default function AddCodeScreen() {
         addCode: myCode || 0,
         expirationTimestamp: myCodeExpireAt,
     });
+
+    // Nearby user detail dialog state
+    const [selectedFriend, setSelectedFriend] = useState<FlatListItem | null>(null);
+    const [selectedFriendCountdown, setSelectedFriendCountdown] = useState(0);
+    const [isSendingRequest, setIsSendingRequest] = useState(false);
 
     // Generate new code
     const getNewCode = useCallback(() => {
@@ -88,12 +93,11 @@ export default function AddCodeScreen() {
             });
     }, []);
 
-    // Initialize and set up auto-refresh for my code
+    // Timer: my code countdown
     useEffect(() => {
         getNewCode();
     }, [getNewCode]);
 
-    // Timer for my code countdown
     useEffect(() => {
         const interval = setInterval(() => {
             setRemainingSeconds((prev) => {
@@ -104,35 +108,56 @@ export default function AddCodeScreen() {
                 return prev - 1;
             });
         }, 1000);
-
         return () => clearInterval(interval);
     }, [getNewCode]);
 
-    // Timer for search result countdown
+    // Timer: manual search result countdown
     useEffect(() => {
         if (!searchResult) return;
-
         const interval = setInterval(() => {
             setSearchResultCountdown((prev) => Math.max(0, prev - 1));
         }, 1000);
-
         return () => clearInterval(interval);
     }, [searchResult]);
 
-    // Handle screen focus/blur for BLE
+    // Timer: nearby friend detail dialog countdown
+    useEffect(() => {
+        if (!selectedFriend) return;
+        // Calculate remaining seconds from expiration
+        let expiration = selectedFriend.expirationTimestamp;
+        if (selectedFriend.isIosLocalName) {
+            // iOS: no expiration known — skip countdown
+            return;
+        }
+        const interval = setInterval(() => {
+            setSelectedFriendCountdown((prev) => {
+                const remaining = Math.max(0, Math.ceil((expiration - Date.now()) / 1000));
+                if (remaining <= 0 && prev !== 0) {
+                    return 0;
+                }
+                return remaining;
+            });
+        }, 1000);
+        // Initialize
+        setSelectedFriendCountdown(
+            Math.max(0, Math.ceil((expiration - Date.now()) / 1000)),
+        );
+        return () => clearInterval(interval);
+    }, [selectedFriend]);
+
+    // Screen blur → disable BLE
     useEffect(() => {
         return () => {
             setBleEnabled(false);
         };
     }, []);
 
-    // Verify code
+    // Manual code search
     const handleFindCode = useCallback(() => {
         if (!searchingCode) {
             setSearchError('Please enter a code');
             return;
         }
-
         if (!/^\d{8}$/.test(searchingCode)) {
             setSearchError('Code must be 8 digits');
             return;
@@ -150,10 +175,9 @@ export default function AddCodeScreen() {
                     setSearchResult(result);
                     const secondsRemaining = Math.max(
                         0,
-                        Math.ceil((result.expireAt - Date.now()) / 1000)
+                        Math.ceil((result.expireAt - Date.now()) / 1000),
                     );
                     setSearchResultCountdown(secondsRemaining);
-                    setShowDialog(true);
                 }
             })
             .catch((err: any) => {
@@ -163,23 +187,20 @@ export default function AddCodeScreen() {
             .finally(() => setIsSearching(false));
     }, [searchingCode]);
 
-    // Send friend request
+    // Send friend request (manual code flow)
     const handleSendFriendRequest = useCallback(async () => {
         if (!searchResult) return;
-
         setIsSearching(true);
-
         try {
             const res = await friends.sendFriendRequestWithCode(
                 parseInt(searchingCode),
-                searchResult.id
+                searchResult.id,
             );
             if (res.data?.success) {
                 Alert.alert('Success', 'Friend request sent!');
                 setSearchResult(null);
                 setSearchingCode('');
                 setSearchError('');
-                setShowDialog(false);
                 Keyboard.dismiss();
             }
         } catch (err: any) {
@@ -190,86 +211,125 @@ export default function AddCodeScreen() {
         }
     }, [searchResult, searchingCode]);
 
-    const handleDialogClose = useCallback(() => {
-        setShowDialog(false);
-    }, []);
+    // Send friend request (BLE nearby flow)
+    const handleSendNearbyFriendRequest = useCallback(async () => {
+        if (!selectedFriend || !selectedFriend.userInfo) return;
 
+        setIsSendingRequest(true);
+        try {
+            const res = await friends.sendFriendRequestWithCode(
+                selectedFriend.addCode,
+                selectedFriend.userInfo.id,
+            );
+            if (res.data?.success) {
+                Alert.alert('Success', 'Friend request sent!');
+                setSelectedFriend(null);
+            }
+        } catch (err: any) {
+            console.error('Failed to send friend request:', err);
+            Alert.alert('Error', 'Failed to send friend request');
+        } finally {
+            setIsSendingRequest(false);
+        }
+    }, [selectedFriend]);
+
+    // Load user info for discovered friends
     const [discoveredFriendsWithInfo, setDiscoveredFriendsWithInfo] = useState<FlatListItem[]>([]);
-    const [loadingFriendsMap, setLoadingFriendsMap] = useState<Map<string, boolean>>(new Map());
+    const loadingFriendsMapRef = React.useRef<Map<string, boolean>>(new Map());
 
     useEffect(() => {
         discoveredFriends.forEach((friend) => {
-            if (!friend.userInfo && !loadingFriendsMap.get(friend.deviceId)) {
-                setLoadingFriendsMap((prev) => new Map(prev).set(friend.deviceId, true));
+            // Skip if already loading or already has userInfo
+            if (loadingFriendsMapRef.current.get(friend.deviceId)) return;
 
-                friends
-                    .verifyAddCode(friend.addCode)
-                    .then((res: any) => {
-                        if (res.data?.success && res.data?.data) {
-                            const userData = res.data.data;
-                            if (userData.id === friend.userId) {
-                                setDiscoveredFriendsWithInfo((prev) => {
-                                    const updated = prev.map((f) =>
-                                        f.deviceId === friend.deviceId
-                                            ? {
-                                                ...f,
-                                                userInfo: {
-                                                    id: userData.id,
-                                                    username: userData.username,
-                                                    display_name: userData.display_name,
-                                                    avatar_locator: userData.avatar_locator,
-                                                },
-                                            }
-                                            : f
-                                    );
-                                    return updated.length > 0 ? updated : prev;
-                                });
-                            }
+            const existing = discoveredFriendsWithInfo.find(
+                (f) => f.deviceId === friend.deviceId && f.userInfo,
+            );
+            if (existing) return;
+
+            // Mark as loading
+            loadingFriendsMapRef.current.set(friend.deviceId, true);
+
+            friends
+                .verifyAddCode(friend.addCode)
+                .then((res: any) => {
+                    if (res.data?.success && res.data?.data) {
+                        const userData = res.data.data;
+
+                        // For iOS sources, userId is 0 so we skip the ID check
+                        // For Android sources, verify userId matches
+                        if (!friend.isIosLocalName && userData.id !== friend.userId) {
+                            return; // userId mismatch, skip
                         }
-                    })
-                    .catch((err: any) => {
-                        console.error('Failed to fetch friend info for addCode:', friend.addCode, err);
-                    })
-                    .finally(() => {
-                        setLoadingFriendsMap((prev) => {
-                            const map = new Map(prev);
-                            map.delete(friend.deviceId);
-                            return map;
+
+                        setDiscoveredFriendsWithInfo((prev) => {
+                            const exists = prev.find(
+                                (f) => f.deviceId === friend.deviceId,
+                            );
+                            if (exists && exists.userInfo) return prev;
+
+                            const updated: FlatListItem = {
+                                ...friend,
+                                userInfo: {
+                                    id: userData.id,
+                                    username: userData.username,
+                                    display_name: userData.display_name,
+                                    avatar_locator: userData.avatar_locator,
+                                },
+                            };
+                            if (exists) {
+                                return prev.map((f) =>
+                                    f.deviceId === friend.deviceId ? updated : f,
+                                );
+                            }
+                            return [...prev, updated];
                         });
-                    });
-            }
+                    }
+                })
+                .catch((err: any) => {
+                    console.error(
+                        'Failed to fetch friend info for addCode:',
+                        friend.addCode,
+                        err,
+                    );
+                })
+                .finally(() => {
+                    loadingFriendsMapRef.current.delete(friend.deviceId);
+                });
         });
 
-        const friendsWithInfo = discoveredFriends.map((friend) => {
-            const existing = discoveredFriendsWithInfo.find((f) => f.deviceId === friend.deviceId);
-            return existing ? existing : (friend as FlatListItem);
+        // Also update the list with newly discovered friends (even without userInfo yet)
+        setDiscoveredFriendsWithInfo((prev) => {
+            let changed = false;
+            const next = [...prev];
+            discoveredFriends.forEach((friend) => {
+                if (!next.find((f) => f.deviceId === friend.deviceId)) {
+                    next.push(friend as FlatListItem);
+                    changed = true;
+                }
+            });
+            return changed ? next : prev;
         });
-        setDiscoveredFriendsWithInfo(friendsWithInfo);
     }, [discoveredFriends]);
 
-
+    // Filter: only friends with userInfo, exclude self
     const filteredFriends = useMemo(() => {
-        return discoveredFriendsWithInfo.filter((f) => f.userInfo && f.userInfo.id !== userId);
+        return discoveredFriendsWithInfo.filter(
+            (f) => f.userInfo && f.userInfo.id !== userId,
+        );
     }, [discoveredFriendsWithInfo, userId]);
 
-    const renderAvatar = (user?: User) => {
-        if (!user)
-            return (
-                <View style={styles.avatarPlaceholder}>
-                    <Text style={styles.avatarLetter}>?</Text>
-                </View>
-            );
-
-        if (user.avatar_locator) {
+    // Render helpers
+    const renderAvatar = (avatarLocator?: string, displayName?: string) => {
+        if (avatarLocator) {
             return (
                 <Image
-                    source={files.getFileSource(user.avatar_locator)}
-                    style={styles.dialogAvatar}
+                    source={files.getFileSource(avatarLocator)}
+                    style={styles.avatarSmall}
                 />
             );
         }
-
-        const letter = (user.display_name || '?')[0].toUpperCase();
+        const letter = (displayName || '?')[0].toUpperCase();
         return (
             <View style={styles.avatarPlaceholder}>
                 <Text style={styles.avatarLetter}>{letter}</Text>
@@ -277,26 +337,46 @@ export default function AddCodeScreen() {
         );
     };
 
-    const renderFlatListItem = ({ item }: { item: FlatListItem }) => {
-        if (!item.userInfo) {
-            return null;
+    const renderDialogAvatar = (avatarLocator?: string, displayName?: string) => {
+        if (avatarLocator) {
+            return (
+                <Image
+                    source={files.getFileSource(avatarLocator)}
+                    style={styles.dialogAvatar}
+                />
+            );
         }
-
-        const secondsRemaining = Math.max(
-            0,
-            Math.ceil((item.expirationTimestamp - Date.now()) / 1000)
+        const letter = (displayName || '?')[0].toUpperCase();
+        return (
+            <View style={styles.dialogAvatarPlaceholder}>
+                <Text style={styles.dialogAvatarLetter}>{letter}</Text>
+            </View>
         );
+    };
+
+
+    // FlatList item
+
+    const renderFlatListItem = ({ item }: { item: FlatListItem }) => {
+        if (!item.userInfo) return null;
+
+        const secondsRemaining = item.isIosLocalName
+            ? null
+            : Math.max(0, Math.ceil((item.expirationTimestamp - Date.now()) / 1000));
 
         return (
             <TouchableOpacity
                 style={styles.flatListItem}
                 onPress={() => {
-                    // on click open modal
+                    setSelectedFriend(item);
                 }}
                 activeOpacity={0.6}
             >
                 <View style={styles.discoveredFriendHeader}>
-                    {renderAvatar(item.userInfo as any)}
+                    {renderAvatar(
+                        item.userInfo.avatar_locator,
+                        item.userInfo.display_name,
+                    )}
                     <View style={styles.discoveredFriendInfo}>
                         <Text style={styles.discoveredFriendName}>
                             {item.userInfo.display_name || item.userInfo.username}
@@ -305,24 +385,40 @@ export default function AddCodeScreen() {
                             @{item.userInfo.username}
                         </Text>
                     </View>
-                    {secondsRemaining > 0 ? (
+                    {secondsRemaining !== null && secondsRemaining > 0 ? (
                         <Text style={styles.discoveredFriendCountdown}>
                             {secondsRemaining}s
                         </Text>
-                    ) : (
+                    ) : secondsRemaining === 0 ? (
                         <Text style={styles.discoveredFriendExpired}>expired</Text>
-                    )}
+                    ) : null}
                 </View>
             </TouchableOpacity>
         );
     };
+
+
+    // Bluetooth status banner
 
     const renderBluetoothStatus = () => {
         if (!isBle5Supported) {
             return (
                 <View style={styles.bleStatusContainer}>
                     <Text style={styles.bleStatusError}>
-                        Your device doesn't support Bluetooth 5.0
+                        This device doesn't support BLE 5.0
+                    </Text>
+                </View>
+            );
+        }
+
+        // Emulators and devices without actual Bluetooth hardware
+        if (!isBleActuallyAvailable) {
+            return (
+                <View style={styles.bleStatusContainer}>
+                    <Text style={styles.bleStatusError}>
+                        Bluetooth is not available on this device. Nearby user
+                        discovery requires a real device with Bluetooth
+                        hardware.
                     </Text>
                 </View>
             );
@@ -332,7 +428,7 @@ export default function AddCodeScreen() {
             return (
                 <View style={styles.bleStatusContainer}>
                     <Text style={styles.bleStatusError}>
-                        No Bluetooth Permission
+                        Bluetooth permission required
                     </Text>
                     <TouchableOpacity
                         style={styles.permissionBtn}
@@ -347,9 +443,7 @@ export default function AddCodeScreen() {
         if (bleError) {
             return (
                 <View style={styles.bleStatusContainer}>
-                    <Text style={styles.bleStatusError}>
-                        ⚠️ {bleError}
-                    </Text>
+                    <Text style={styles.bleStatusError}>{bleError}</Text>
                 </View>
             );
         }
@@ -357,15 +451,23 @@ export default function AddCodeScreen() {
         return null;
     };
 
+
+    // Main render
+
     return (
         <View style={styles.container}>
-            {/* Upper Half - UI */}
-            <View style={[styles.upperHalf, { height: UI_HEIGHT }]}>
+            {/* Upper: Code & Search (natural height) */}
+            <ScrollView
+                style={styles.upperHalf}
+                contentContainerStyle={styles.upperHalfContent}
+                keyboardShouldPersistTaps="handled"
+                showsVerticalScrollIndicator={false}
+            >
+                {/* My Code Section */}
                 <View style={styles.section}>
-                    {/* My Code Section */}
                     <Text style={styles.sectionTitle}>Your Code</Text>
                     <Text style={styles.sectionDesc}>
-                        Click to refresh manually. Code expires in 30 seconds.
+                        Tap to refresh. Code expires in 30 seconds.
                     </Text>
 
                     <TouchableOpacity
@@ -379,7 +481,7 @@ export default function AddCodeScreen() {
                             </Text>
                         </View>
                         <View style={styles.codeProgressBar}>
-                            {myCode?.toString().padStart(8, '0') && (
+                            {myCode && (
                                 <View
                                     style={[
                                         styles.codeProgressFill,
@@ -399,9 +501,9 @@ export default function AddCodeScreen() {
 
                 {/* Search Section */}
                 <View style={styles.section}>
-                    <Text style={styles.sectionTitle}>Find Others Code</Text>
+                    <Text style={styles.sectionTitle}>Find by Code</Text>
                     <Text style={styles.sectionDesc}>
-                        Input the 8-digit code they provide
+                        Enter an 8-digit code
                     </Text>
 
                     <View style={styles.inputRow}>
@@ -426,10 +528,7 @@ export default function AddCodeScreen() {
                             activeOpacity={0.6}
                         >
                             {isSearching ? (
-                                <ActivityIndicator
-                                    size="small"
-                                    color="#fff"
-                                />
+                                <ActivityIndicator size="small" color="#fff" />
                             ) : (
                                 <Text style={styles.findBtnText}>Find</Text>
                             )}
@@ -440,27 +539,28 @@ export default function AddCodeScreen() {
                         <Text style={styles.errorText}>{searchError}</Text>
                     ) : null}
                 </View>
-            </View>
+            </ScrollView>
 
-            {/* Lower Half - FlatList with BLE Discovered Friends */}
-            <View style={[styles.lowerHalf, { height: screenHeight - UI_HEIGHT }]}>
-                {/* Bluetooth Status */}
+            {/* Lower: Nearby Users (flex: 1 takes remaining space) */}
+            <View style={styles.lowerHalf}>
                 {renderBluetoothStatus()}
 
-                {/* Header with Refresh */}
+                {/* Header */}
                 <View style={styles.lowerHalfHeader}>
                     <Text style={styles.lowerHalfTitle}>
-                        🔵 Nearby Users ({filteredFriends.length})
+                        Nearby Users ({filteredFriends.length})
                     </Text>
                     <TouchableOpacity
                         onPress={refreshFriends}
-                        disabled={bleLoading || !isBle5Supported || !hasBluetoothPermission}
+                        disabled={
+                            bleLoading || !isBle5Supported || !isBleActuallyAvailable || !hasBluetoothPermission
+                        }
                         hitSlop={{ top: 8, right: 8, bottom: 8, left: 8 }}
                     >
                         {bleLoading ? (
                             <ActivityIndicator size="small" color={PRIMARY} />
                         ) : (
-                            <Text style={styles.refreshIcon}>🔄</Text>
+                            <AntDesign name="reload" size={24} color="black" style={styles.refreshIcon} />
                         )}
                     </TouchableOpacity>
                 </View>
@@ -474,10 +574,12 @@ export default function AddCodeScreen() {
                         <View style={styles.emptyListContainer}>
                             <Text style={styles.emptyListText}>
                                 {!isBle5Supported
-                                    ? 'We need your permission'
-                                    : !hasBluetoothPermission
-                                        ? 'Permit the app to use Bluetooth to find others.'
-                                        : 'No nearby users found'}
+                                    ? 'BLE 5.0 required'
+                                    : !isBleActuallyAvailable
+                                        ? 'Bluetooth not available on this device'
+                                        : !hasBluetoothPermission
+                                            ? 'Grant Bluetooth permission to discover nearby users'
+                                            : 'No nearby users found'}
                             </Text>
                         </View>
                     }
@@ -491,30 +593,32 @@ export default function AddCodeScreen() {
                 />
             </View>
 
-            {/* Result Dialog */}
+            {/* Manual Search Result Dialog (unchanged) */}
             <Modal
-                visible={showDialog}
+                visible={!!searchResult}
                 transparent={true}
                 animationType="fade"
-                onRequestClose={handleDialogClose}
+                onRequestClose={() => setSearchResult(null)}
             >
                 <View style={styles.dialogOverlay}>
                     <View style={styles.dialogContent}>
                         <View style={styles.dialogHeader}>
                             <Text style={styles.dialogTitle}>Confirm User</Text>
                             <TouchableOpacity
-                                onPress={handleDialogClose}
+                                onPress={() => setSearchResult(null)}
                                 hitSlop={{ top: 10, right: 10, bottom: 10, left: 10 }}
                             >
-                                <Text style={styles.dialogCloseBtn}>✕</Text>
+                                <Text style={styles.dialogCloseBtn}>{'\u2715'}</Text>
                             </TouchableOpacity>
                         </View>
 
-                        {searchResult ? (
+                        {searchResult && (
                             <>
-                                {/* User Info */}
                                 <View style={styles.userInfoContainer}>
-                                    {renderAvatar(searchResult)}
+                                    {renderDialogAvatar(
+                                        searchResult.avatar_locator || undefined,
+                                        searchResult.display_name,
+                                    )}
                                     <View style={styles.userInfoText}>
                                         <Text style={styles.userName}>
                                             {searchResult.display_name ||
@@ -535,11 +639,10 @@ export default function AddCodeScreen() {
                                     )}
                                 </View>
 
-                                {/* Action Buttons */}
                                 <View style={styles.dialogButtons}>
                                     <TouchableOpacity
                                         style={styles.cancelBtn}
-                                        onPress={handleDialogClose}
+                                        onPress={() => setSearchResult(null)}
                                         disabled={isSearching}
                                     >
                                         <Text style={styles.cancelBtnText}>
@@ -549,14 +652,12 @@ export default function AddCodeScreen() {
                                     <TouchableOpacity
                                         style={[
                                             styles.addBtn,
-                                            (isSearching ||
-                                                searchResultCountdown <= 0) &&
+                                            (isSearching || searchResultCountdown <= 0) &&
                                             styles.addBtnDisabled,
                                         ]}
                                         onPress={handleSendFriendRequest}
                                         disabled={
-                                            isSearching ||
-                                            searchResultCountdown <= 0
+                                            isSearching || searchResultCountdown <= 0
                                         }
                                     >
                                         {isSearching ? (
@@ -572,7 +673,122 @@ export default function AddCodeScreen() {
                                     </TouchableOpacity>
                                 </View>
                             </>
-                        ) : null}
+                        )}
+                    </View>
+                </View>
+            </Modal>
+
+            {/* Nearby Friend Detail Dialog */}
+            <Modal
+                visible={!!selectedFriend}
+                transparent={true}
+                animationType="fade"
+                onRequestClose={() => setSelectedFriend(null)}
+            >
+                <View style={styles.dialogOverlay}>
+                    <View style={styles.dialogContent}>
+                        <View style={styles.dialogHeader}>
+                            <Text style={styles.dialogTitle}>Nearby User</Text>
+                            <TouchableOpacity
+                                onPress={() => setSelectedFriend(null)}
+                                hitSlop={{ top: 10, right: 10, bottom: 10, left: 10 }}
+                            >
+                                <Text style={styles.dialogCloseBtn}>{'\u2715'}</Text>
+                            </TouchableOpacity>
+                        </View>
+
+                        {selectedFriend && selectedFriend.userInfo && (
+                            <>
+                                {/* User Info Card */}
+                                <View style={styles.userInfoContainer}>
+                                    {renderDialogAvatar(
+                                        selectedFriend.userInfo.avatar_locator,
+                                        selectedFriend.userInfo.display_name,
+                                    )}
+                                    <View style={styles.userInfoText}>
+                                        <Text style={styles.userName}>
+                                            {selectedFriend.userInfo.display_name ||
+                                                selectedFriend.userInfo.username}
+                                        </Text>
+                                        <Text style={styles.userUsername}>
+                                            @{selectedFriend.userInfo.username}
+                                        </Text>
+                                        <Text style={styles.userDetailRow}>
+                                            ID: {selectedFriend.userInfo.id}
+                                        </Text>
+                                    </View>
+                                    {!selectedFriend.isIosLocalName &&
+                                        (selectedFriendCountdown > 0 ? (
+                                            <Text style={styles.countdownBadge}>
+                                                {selectedFriendCountdown}s
+                                            </Text>
+                                        ) : (
+                                            <Text style={styles.expiredBadge}>
+                                                expired
+                                            </Text>
+                                        ))}
+                                </View>
+
+                                {/* Device info */}
+                                <View style={styles.deviceInfoRow}>
+                                    <Text style={styles.deviceInfoLabel}>
+                                        Add Code:{' '}
+                                    </Text>
+                                    <Text style={styles.deviceInfoValue}>
+                                        {selectedFriend.addCode
+                                            .toString()
+                                            .padStart(8, '0')}
+                                    </Text>
+                                </View>
+                                <View style={styles.deviceInfoRow}>
+                                    <Text style={styles.deviceInfoLabel}>
+                                        Device:{' '}
+                                    </Text>
+                                    <Text style={styles.deviceInfoValue}>
+                                        {selectedFriend.deviceName ||
+                                            selectedFriend.deviceId}
+                                    </Text>
+                                </View>
+
+                                {/* Action Buttons */}
+                                <View style={styles.dialogButtons}>
+                                    <TouchableOpacity
+                                        style={styles.cancelBtn}
+                                        onPress={() => setSelectedFriend(null)}
+                                        disabled={isSendingRequest}
+                                    >
+                                        <Text style={styles.cancelBtnText}>
+                                            Cancel
+                                        </Text>
+                                    </TouchableOpacity>
+                                    <TouchableOpacity
+                                        style={[
+                                            styles.addBtn,
+                                            (!selectedFriend.isIosLocalName &&
+                                                selectedFriendCountdown <= 0) &&
+                                            styles.addBtnDisabled,
+                                        ]}
+                                        onPress={handleSendNearbyFriendRequest}
+                                        disabled={
+                                            isSendingRequest ||
+                                            (!selectedFriend.isIosLocalName &&
+                                                selectedFriendCountdown <= 0)
+                                        }
+                                    >
+                                        {isSendingRequest ? (
+                                            <ActivityIndicator
+                                                size="small"
+                                                color="#fff"
+                                            />
+                                        ) : (
+                                            <Text style={styles.addBtnText}>
+                                                Send Request
+                                            </Text>
+                                        )}
+                                    </TouchableOpacity>
+                                </View>
+                            </>
+                        )}
                     </View>
                 </View>
             </Modal>
@@ -589,9 +805,14 @@ const styles = StyleSheet.create({
         backgroundColor: '#fff',
         borderBottomWidth: StyleSheet.hairlineWidth,
         borderBottomColor: '#E5E5E5',
-        overflow: 'hidden',
+        flexGrow: 0,
+        flexShrink: 0,
+    },
+    upperHalfContent: {
+        paddingBottom: 8,
     },
     lowerHalf: {
+        flex: 1,
         backgroundColor: '#F5F5F5',
         borderTopWidth: StyleSheet.hairlineWidth,
         borderTopColor: '#E5E5E5',
@@ -726,7 +947,7 @@ const styles = StyleSheet.create({
         color: '#e74c3c',
         marginTop: 4,
     },
-    // FlatList
+    // FlatList items
     flatListItem: {
         paddingHorizontal: 12,
         paddingVertical: 8,
@@ -769,13 +990,33 @@ const styles = StyleSheet.create({
         flex: 1,
         justifyContent: 'center',
         alignItems: 'center',
+        paddingTop: 40,
     },
     emptyListText: {
         fontSize: 14,
         color: '#999',
         textAlign: 'center',
     },
-    // Dialog
+    // Small avatar for list item
+    avatarSmall: {
+        width: 36,
+        height: 36,
+        borderRadius: 18,
+    },
+    avatarPlaceholder: {
+        width: 36,
+        height: 36,
+        borderRadius: 18,
+        backgroundColor: PRIMARY,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    avatarLetter: {
+        color: '#fff',
+        fontSize: 15,
+        fontWeight: '700',
+    },
+    // Dialog shared
     dialogOverlay: {
         flex: 1,
         backgroundColor: 'rgba(0, 0, 0, 0.5)',
@@ -816,48 +1057,71 @@ const styles = StyleSheet.create({
         borderRadius: 8,
     },
     dialogAvatar: {
-        width: 44,
-        height: 44,
-        borderRadius: 22,
+        width: 52,
+        height: 52,
+        borderRadius: 26,
         marginRight: 12,
     },
-    avatarPlaceholder: {
-        width: 44,
-        height: 44,
-        borderRadius: 22,
+    dialogAvatarPlaceholder: {
+        width: 52,
+        height: 52,
+        borderRadius: 26,
         backgroundColor: PRIMARY,
         justifyContent: 'center',
         alignItems: 'center',
         marginRight: 12,
     },
-    avatarLetter: {
+    dialogAvatarLetter: {
         color: '#fff',
-        fontSize: 18,
+        fontSize: 22,
         fontWeight: '700',
     },
     userInfoText: {
         flex: 1,
     },
     userName: {
-        fontSize: 14,
+        fontSize: 16,
         fontWeight: '600',
         color: '#333',
     },
     userUsername: {
-        fontSize: 12,
+        fontSize: 13,
         color: '#999',
         marginTop: 2,
     },
+    userDetailRow: {
+        fontSize: 12,
+        color: '#aaa',
+        marginTop: 4,
+    },
     countdownBadge: {
-        fontSize: 11,
+        fontSize: 13,
         color: '#999',
         fontFamily: 'monospace',
+        marginLeft: 8,
     },
     expiredBadge: {
-        fontSize: 11,
+        fontSize: 13,
         color: '#e74c3c',
         fontWeight: '600',
+        marginLeft: 8,
     },
+    // Device info in nearby dialog
+    deviceInfoRow: {
+        flexDirection: 'row',
+        paddingHorizontal: 8,
+        paddingVertical: 4,
+    },
+    deviceInfoLabel: {
+        fontSize: 13,
+        color: '#666',
+        fontWeight: '500',
+    },
+    deviceInfoValue: {
+        fontSize: 13,
+        color: '#333',
+    },
+    // Buttons
     dialogButtons: {
         flexDirection: 'row',
         gap: 10,
