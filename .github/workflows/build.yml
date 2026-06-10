@@ -430,7 +430,7 @@ jobs:
             - iOS IPA: ${{ needs.build-app-ipa.result }}
             - Server: ${{ needs.build-server.result }}
 
-            > Only successfully built artifacts are attached below.
+            > Only successfully built artifacts are attached below. The failure of iOS build is acceptable for now.
           files: |
             release-assets/**/*
           draft: false
