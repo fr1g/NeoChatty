@@ -186,6 +186,15 @@ export function useBleBroadcast(options: UseBleAdOptions): UseBleAdReturn {
         let cancelled = false;
 
         const doAdvertise = async () => {
+            // Ensure permissions
+            const permOk = await checkPermissions();
+            if (!permOk) {
+                if (mountedRef.current) {
+                    setError('Bluetooth permissions not granted');
+                }
+                return;
+            }
+
             const result = await startBleAdvertising(
                 options.userId,
                 options.addCode,
@@ -210,7 +219,7 @@ export function useBleBroadcast(options: UseBleAdOptions): UseBleAdReturn {
                 advertisingHandleRef.current = null;
             }
         };
-    }, [options.enabled, options.userId, options.addCode, options.expirationTimestamp]);
+    }, [options.enabled, options.userId, options.addCode, options.expirationTimestamp, checkPermissions]);
 
 
     // Main init / teardown effect
@@ -242,11 +251,33 @@ export function useBleBroadcast(options: UseBleAdOptions): UseBleAdReturn {
                 return;
             }
 
-            // Check if BLE is actually available (emulators usually return false)
+            // Step 1: Request runtime permissions FIRST.
+            let hasPermission = await checkPermissions();
+            if (!hasPermission) {
+                const granted = await requestBluetoothPermissions();
+                if (!granted) {
+                    if (mountedRef.current) {
+                        setError('Bluetooth permissions not granted');
+                    }
+                    return;
+                }
+                hasPermission = await checkPermissions();
+                if (!hasPermission) {
+                    if (mountedRef.current) {
+                        setError('Bluetooth permissions not granted');
+                    }
+                    return;
+                }
+            }
+
+            // Step 2: Now that permissions are granted, check the actual
+            // Bluetooth hardware / radio state.
             const bleStatus = await isBleActuallyAvailable();
             if (!bleStatus.available) {
                 if (mountedRef.current) {
                     setBleActuallyAvailable(false);
+                    // Provide a user-friendly message that distinguishes
+                    // "Bluetooth is off" from "no Bluetooth hardware".
                     setError(bleStatus.reason || 'Bluetooth is not available on this device');
                 }
                 return;
@@ -255,14 +286,7 @@ export function useBleBroadcast(options: UseBleAdOptions): UseBleAdReturn {
                 setBleActuallyAvailable(true);
             }
 
-            const hasPermission = await checkPermissions();
-            if (!hasPermission) {
-                if (mountedRef.current) {
-                    setError('Bluetooth permissions not granted');
-                }
-                return;
-            }
-
+            // Step 3: Start periodic scanning
             if (mountedRef.current) {
                 refreshFriends();
             }

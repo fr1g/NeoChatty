@@ -74,7 +74,6 @@ export default function AddCodeScreen() {
 
     // Nearby user detail dialog state
     const [selectedFriend, setSelectedFriend] = useState<FlatListItem | null>(null);
-    const [selectedFriendCountdown, setSelectedFriendCountdown] = useState(0);
     const [isSendingRequest, setIsSendingRequest] = useState(false);
 
     // Generate new code
@@ -120,30 +119,7 @@ export default function AddCodeScreen() {
         return () => clearInterval(interval);
     }, [searchResult]);
 
-    // Timer: nearby friend detail dialog countdown
-    useEffect(() => {
-        if (!selectedFriend) return;
-        // Calculate remaining seconds from expiration
-        let expiration = selectedFriend.expirationTimestamp;
-        if (selectedFriend.isIosLocalName) {
-            // iOS: no expiration known — skip countdown
-            return;
-        }
-        const interval = setInterval(() => {
-            setSelectedFriendCountdown((prev) => {
-                const remaining = Math.max(0, Math.ceil((expiration - Date.now()) / 1000));
-                if (remaining <= 0 && prev !== 0) {
-                    return 0;
-                }
-                return remaining;
-            });
-        }, 1000);
-        // Initialize
-        setSelectedFriendCountdown(
-            Math.max(0, Math.ceil((expiration - Date.now()) / 1000)),
-        );
-        return () => clearInterval(interval);
-    }, [selectedFriend]);
+    // Timer: nearby friend detail dialog countdown (removed — expirationTimestamp is no longer in payload)
 
     // Screen blur → disable BLE
     useEffect(() => {
@@ -256,9 +232,8 @@ export default function AddCodeScreen() {
                     if (res.data?.success && res.data?.data) {
                         const userData = res.data.data;
 
-                        // For iOS sources, userId is 0 so we skip the ID check
-                        // For Android sources, verify userId matches
-                        if (!friend.isIosLocalName && userData.id !== friend.userId) {
+                        // Verify userId matches the broadcast source
+                        if (userData.id !== friend.userId) {
                             return; // userId mismatch, skip
                         }
 
@@ -360,10 +335,6 @@ export default function AddCodeScreen() {
     const renderFlatListItem = ({ item }: { item: FlatListItem }) => {
         if (!item.userInfo) return null;
 
-        const secondsRemaining = item.isIosLocalName
-            ? null
-            : Math.max(0, Math.ceil((item.expirationTimestamp - Date.now()) / 1000));
-
         return (
             <TouchableOpacity
                 style={styles.flatListItem}
@@ -385,13 +356,6 @@ export default function AddCodeScreen() {
                             @{item.userInfo.username}
                         </Text>
                     </View>
-                    {secondsRemaining !== null && secondsRemaining > 0 ? (
-                        <Text style={styles.discoveredFriendCountdown}>
-                            {secondsRemaining}s
-                        </Text>
-                    ) : secondsRemaining === 0 ? (
-                        <Text style={styles.discoveredFriendExpired}>expired</Text>
-                    ) : null}
                 </View>
             </TouchableOpacity>
         );
@@ -416,7 +380,8 @@ export default function AddCodeScreen() {
             return (
                 <View style={styles.bleStatusContainer}>
                     <Text style={styles.bleStatusError}>
-                        Bluetooth is not available on this device. Nearby user
+                        Bluetooth is not available, please make sure you have enabled your Bluetooth on your device,
+                        and refresh to try again. Nearby user
                         discovery requires a real device with Bluetooth
                         hardware.
                     </Text>
@@ -717,16 +682,7 @@ export default function AddCodeScreen() {
                                             ID: {selectedFriend.userInfo.id}
                                         </Text>
                                     </View>
-                                    {!selectedFriend.isIosLocalName &&
-                                        (selectedFriendCountdown > 0 ? (
-                                            <Text style={styles.countdownBadge}>
-                                                {selectedFriendCountdown}s
-                                            </Text>
-                                        ) : (
-                                            <Text style={styles.expiredBadge}>
-                                                expired
-                                            </Text>
-                                        ))}
+
                                 </View>
 
                                 {/* Device info */}
@@ -764,16 +720,10 @@ export default function AddCodeScreen() {
                                     <TouchableOpacity
                                         style={[
                                             styles.addBtn,
-                                            (!selectedFriend.isIosLocalName &&
-                                                selectedFriendCountdown <= 0) &&
-                                            styles.addBtnDisabled,
+                                            isSendingRequest && styles.addBtnDisabled,
                                         ]}
                                         onPress={handleSendNearbyFriendRequest}
-                                        disabled={
-                                            isSendingRequest ||
-                                            (!selectedFriend.isIosLocalName &&
-                                                selectedFriendCountdown <= 0)
-                                        }
+                                        disabled={isSendingRequest}
                                     >
                                         {isSendingRequest ? (
                                             <ActivityIndicator
