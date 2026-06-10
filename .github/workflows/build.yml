@@ -346,3 +346,57 @@ jobs:
         run: |
           echo "Build triggered by commit message: ${{ github.event.head_commit.message }}"
           echo "All builds completed!"
+
+  publish-release:
+    name: Publish Release
+    runs-on: ubuntu-latest
+    needs: [build-summary]
+    if: |
+      github.event_name == 'push' &&
+      needs.build-summary.result == 'success'
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: release-assets
+
+      - name: List downloaded artifacts
+        run: |
+          echo "=== Release Assets ==="
+          find release-assets -type f -exec ls -lh {} \;
+
+      - name: Generate release tag name
+        id: tag
+        run: |
+          SHORT_SHA=$(echo "${{ github.sha }}" | cut -c1-7)
+          TAG="build-$(date +'%Y%m%d')-${SHORT_SHA}"
+          echo "tag=${TAG}" >> $GITHUB_OUTPUT
+          echo "Release tag: ${TAG}"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.tag.outputs.tag }}
+          name: "Build ${{ steps.tag.outputs.tag }}"
+          body: |
+            Automated build from commit `${{ github.sha }}`
+
+            **Commit message**: ${{ github.event.head_commit.message }}
+
+            ### Included artifacts:
+            - **SDK** (`sdk-dist`)
+            - **WebApp** (`webapp-dist`)
+            - **ChattyStager** (`stager-build`)
+            - **Android APK** (`app-apk`)
+            - **iOS IPA (unsigned)** (`app-ipa-unsigned`)
+            - **Server** (`server-dist`)
+          files: |
+            release-assets/**/*
+          draft: false
+          prerelease: false
+          generate_release_notes: false
