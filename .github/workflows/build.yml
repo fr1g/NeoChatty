@@ -400,7 +400,7 @@ jobs:
               continue
             fi
 
-            # Count files in this artifact directory
+            # Count files in this artifact directory///
             file_count=$(find "$dir" -type f | wc -l)
 
             if echo "$SINGLE_FILE_ARTIFACTS" | grep -qw "$name" && [ "$file_count" -eq 1 ]; then
