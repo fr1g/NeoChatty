@@ -384,27 +384,56 @@ jobs:
           path: release-assets
         continue-on-error: true
 
-      - name: List downloaded artifacts
+      - name: Package artifacts for release
+        id: package
         run: |
-          echo "=== Release Assets ==="
-          if [ -d release-assets ] && [ "$(ls -A release-assets 2>/dev/null)" ]; then
-            find release-assets -type f -exec ls -lh {} \;
+          mkdir -p packages
+          artifact_names=()
+
+          # Artifacts that are single files (no need to re-zip): apk, ipa
+          SINGLE_FILE_ARTIFACTS="app-apk app-ipa-unsigned"
+
+          for dir in release-assets/*/; do
+            name=$(basename "$dir")
+            if [ -z "$(ls -A "$dir" 2>/dev/null)" ]; then
+              echo "Skipping empty artifact: $name"
+              continue
+            fi
+
+            # Count files in this artifact directory
+            file_count=$(find "$dir" -type f | wc -l)
+
+            if echo "$SINGLE_FILE_ARTIFACTS" | grep -qw "$name" && [ "$file_count" -eq 1 ]; then
+              # Single file artifact: copy directly without re-zipping
+              src_file=$(find "$dir" -type f | head -1)
+              ext="${src_file##*.}"
+              dest="packages/${name}.${ext}"
+              cp "$src_file" "$dest"
+              echo "Single file: $name -> $dest"
+            else
+              # Multi-file artifact: package into zip
+              zip_file="packages/${name}.zip"
+              echo "Packaging $name ($file_count files) -> $zip_file"
+              (cd "$dir" && zip -r "../../${zip_file}" .)
+            fi
+            artifact_names+=("$name")
+          done
+
+          if [ ${#artifact_names[@]} -eq 0 ]; then
+            echo "No artifacts to publish."
+            echo "has_artifacts=false" >> $GITHUB_OUTPUT
           else
-            echo "No artifacts found, skipping release."
+            echo "Packaged ${#artifact_names[@]} artifacts: ${artifact_names[*]}"
+            echo "has_artifacts=true" >> $GITHUB_OUTPUT
+            echo "names=${artifact_names[*]}" >> $GITHUB_OUTPUT
           fi
 
-      - name: Check if any artifacts exist
-        id: check
-        run: |
-          if [ -d release-assets ] && [ "$(ls -A release-assets 2>/dev/null)" ]; then
-            echo "has_artifacts=true" >> $GITHUB_OUTPUT
-          else
-            echo "has_artifacts=false" >> $GITHUB_OUTPUT
-          fi
+          echo "=== Release files ==="
+          ls -lh packages/
 
       - name: Generate release tag name
         id: tag
-        if: steps.check.outputs.has_artifacts == 'true'
+        if: steps.package.outputs.has_artifacts == 'true'
         run: |
           SHORT_SHA=$(echo "${{ github.sha }}" | cut -c1-7)
           TAG="build-$(date +'%Y%m%d')-${SHORT_SHA}"
@@ -412,7 +441,8 @@ jobs:
           echo "Release tag: ${TAG}"
 
       - name: Create GitHub Release
-        if: steps.check.outputs.has_artifacts == 'true'
+        id: create_release
+        if: steps.package.outputs.has_artifacts == 'true'
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.tag.outputs.tag }}
@@ -430,9 +460,12 @@ jobs:
             - iOS IPA: ${{ needs.build-app-ipa.result }}
             - Server: ${{ needs.build-server.result }}
 
-            > Only successfully built artifacts are attached below. The failure of iOS build is acceptable for now.
+            ### Attached artifacts:
+            ${{ steps.package.outputs.names }}
+
+            > Each artifact is packaged as a single .zip file. The failure of individual builds (e.g. iOS) is acceptable.
           files: |
-            release-assets/**/*
+            packages/*
           draft: false
           prerelease: false
           generate_release_notes: false
