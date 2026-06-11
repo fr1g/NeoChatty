@@ -148,6 +148,17 @@ jobs:
         working-directory: app
         run: npm install
 
+      - name: Read version from .VERSION
+        id: version
+        run: |
+          VERSION=$(cat .VERSION | tr -d '\r\n' | xargs)
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+          # Generate versionCode: MAJOR * 10000 + MINOR * 100 + PATCH
+          IFS='.' read -r MAJOR MINOR PATCH <<< "$VERSION"
+          VERSION_CODE=$((MAJOR * 10000 + MINOR * 100 + PATCH))
+          echo "version_code=${VERSION_CODE}" >> $GITHUB_OUTPUT
+          echo "Version: ${VERSION}, VersionCode: ${VERSION_CODE}"
+
       - name: Check Expo prebuild status
         working-directory: app
         run: |
@@ -157,6 +168,13 @@ jobs:
           else
             echo "Android prebuilt directory found, skipping prebuild"
           fi
+
+      - name: Inject version into Android build
+        working-directory: app/android
+        run: |
+          sed -i "s/versionCode [0-9]*/versionCode ${{ steps.version.outputs.version_code }}/" app/build.gradle
+          sed -i 's/versionName "[^"]*"/versionName "${{ steps.version.outputs.version }}"/' app/build.gradle
+          echo "Injected versionName=${{ steps.version.outputs.version }} versionCode=${{ steps.version.outputs.version_code }}"
 
       - name: Build APK using Gradle
         working-directory: app/android
@@ -199,6 +217,17 @@ jobs:
         working-directory: app
         run: npm install
 
+      - name: Read version from .VERSION
+        id: version
+        run: |
+          VERSION=$(cat .VERSION | tr -d '\r\n' | xargs)
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+          # Generate CFBundleVersion: MAJOR * 10000 + MINOR * 100 + PATCH
+          IFS='.' read -r MAJOR MINOR PATCH <<< "$VERSION"
+          BUNDLE_VERSION=$((MAJOR * 10000 + MINOR * 100 + PATCH))
+          echo "bundle_version=${BUNDLE_VERSION}" >> $GITHUB_OUTPUT
+          echo "Version: ${VERSION}, BundleVersion: ${BUNDLE_VERSION}"
+
       - name: Check Expo prebuild status
         working-directory: app
         run: |
@@ -208,6 +237,16 @@ jobs:
           else
             echo "Prebuilt directories found, skipping prebuild"
           fi
+
+      - name: Inject version into iOS build
+        working-directory: app/ios
+        run: |
+          # Update CFBundleShortVersionString and CFBundleVersion in Info.plist
+          /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString ${{ steps.version.outputs.version }}" \
+            "$(find . -name 'Info.plist' -not -path '*/Pods/*' | head -1)"
+          /usr/libexec/PlistBuddy -c "Set :CFBundleVersion ${{ steps.version.outputs.bundle_version }}" \
+            "$(find . -name 'Info.plist' -not -path '*/Pods/*' | head -1)"
+          echo "Injected CFBundleShortVersionString=${{ steps.version.outputs.version }} CFBundleVersion=${{ steps.version.outputs.bundle_version }}"
 
       - name: Install CocoaPods dependencies
         working-directory: app/ios
