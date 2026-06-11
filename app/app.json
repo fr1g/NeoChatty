@@ -42,6 +42,21 @@
     },
     "web": {
       "favicon": "./assets/favicon.png"
-    }
+    },
+    "plugins": [
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "usesCleartextTraffic": true,
+            "versionName": "1.0.0",
+            "versionCode": 10000
+          },
+          "ios": {
+            "buildNumber": "10000"
+          }
+        }
+      ]
+    ]
   }
 }

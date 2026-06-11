@@ -148,7 +148,7 @@ jobs:
         working-directory: app
         run: npm install
 
-      - name: Read version from .VERSION
+      - name: Read version from .VERSION and sync to app.json
         id: version
         run: |
           VERSION=$(cat .VERSION | tr -d '\r\n' | xargs)
@@ -157,6 +157,11 @@ jobs:
           IFS='.' read -r MAJOR MINOR PATCH <<< "$VERSION"
           VERSION_CODE=$((MAJOR * 10000 + MINOR * 100 + PATCH))
           echo "version_code=${VERSION_CODE}" >> $GITHUB_OUTPUT
+          # Write version into app.json so expo-build-properties picks it up
+          tmp=$(mktemp)
+          jq --arg v "$VERSION" --argjson vc "$VERSION_CODE" \
+            '.expo.version = $v | .expo.plugins |= map(if .[0] == "expo-build-properties" then .[1].android.versionName = $v | .[1].android.versionCode = $vc else . end)' \
+            app/app.json > "$tmp" && mv "$tmp" app/app.json
           echo "Version: ${VERSION}, VersionCode: ${VERSION_CODE}"
 
       - name: Check Expo prebuild status
@@ -168,13 +173,6 @@ jobs:
           else
             echo "Android prebuilt directory found, skipping prebuild"
           fi
-
-      - name: Inject version into Android build
-        working-directory: app/android
-        run: |
-          sed -i "s/versionCode [0-9]*/versionCode ${{ steps.version.outputs.version_code }}/" app/build.gradle
-          sed -i 's/versionName "[^"]*"/versionName "${{ steps.version.outputs.version }}"/' app/build.gradle
-          echo "Injected versionName=${{ steps.version.outputs.version }} versionCode=${{ steps.version.outputs.version_code }}"
 
       - name: Build APK using Gradle
         working-directory: app/android
@@ -217,7 +215,7 @@ jobs:
         working-directory: app
         run: npm install
 
-      - name: Read version from .VERSION
+      - name: Read version from .VERSION and sync to app.json
         id: version
         run: |
           VERSION=$(cat .VERSION | tr -d '\r\n' | xargs)
@@ -226,6 +224,11 @@ jobs:
           IFS='.' read -r MAJOR MINOR PATCH <<< "$VERSION"
           BUNDLE_VERSION=$((MAJOR * 10000 + MINOR * 100 + PATCH))
           echo "bundle_version=${BUNDLE_VERSION}" >> $GITHUB_OUTPUT
+          # Write version into app.json so expo-build-properties picks it up
+          tmp=$(mktemp)
+          jq --arg v "$VERSION" --arg bv "$BUNDLE_VERSION" \
+            '.expo.version = $v | .expo.plugins |= map(if .[0] == "expo-build-properties" then .[1].ios.buildNumber = $bv else . end)' \
+            app/app.json > "$tmp" && mv "$tmp" app/app.json
           echo "Version: ${VERSION}, BundleVersion: ${BUNDLE_VERSION}"
 
       - name: Check Expo prebuild status
@@ -237,16 +240,6 @@ jobs:
           else
             echo "Prebuilt directories found, skipping prebuild"
           fi
-
-      - name: Inject version into iOS build
-        working-directory: app/ios
-        run: |
-          # Update CFBundleShortVersionString and CFBundleVersion in Info.plist
-          /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString ${{ steps.version.outputs.version }}" \
-            "$(find . -name 'Info.plist' -not -path '*/Pods/*' | head -1)"
-          /usr/libexec/PlistBuddy -c "Set :CFBundleVersion ${{ steps.version.outputs.bundle_version }}" \
-            "$(find . -name 'Info.plist' -not -path '*/Pods/*' | head -1)"
-          echo "Injected CFBundleShortVersionString=${{ steps.version.outputs.version }} CFBundleVersion=${{ steps.version.outputs.bundle_version }}"
 
       - name: Install CocoaPods dependencies
         working-directory: app/ios
