@@ -148,31 +148,22 @@ jobs:
         working-directory: app
         run: npm install
 
-      - name: Read version from .VERSION and sync to app.json
-        id: version
+      - name: Sync .VERSION into app.json and run prebuild
+        working-directory: app
         run: |
-          VERSION=$(cat .VERSION | tr -d '\r\n' | xargs)
-          echo "version=${VERSION}" >> $GITHUB_OUTPUT
-          # Generate versionCode: MAJOR * 10000 + MINOR * 100 + PATCH
+          VERSION=$(cat ../.VERSION | tr -d '\r\n' | xargs)
+          echo ".VERSION = ${VERSION}"
           IFS='.' read -r MAJOR MINOR PATCH <<< "$VERSION"
           VERSION_CODE=$((MAJOR * 10000 + MINOR * 100 + PATCH))
-          echo "version_code=${VERSION_CODE}" >> $GITHUB_OUTPUT
-          # Write version into app.json so expo-build-properties picks it up
+          echo "versionCode = ${VERSION_CODE}"
+
           tmp=$(mktemp)
           jq --arg v "$VERSION" --argjson vc "$VERSION_CODE" \
             '.expo.version = $v | .expo.plugins |= map(if .[0] == "expo-build-properties" then .[1].android.versionName = $v | .[1].android.versionCode = $vc else . end)' \
-            app/app.json > "$tmp" && mv "$tmp" app/app.json
-          echo "Version: ${VERSION}, VersionCode: ${VERSION_CODE}"
+            app.json > "$tmp" && mv "$tmp" app.json
 
-      - name: Check Expo prebuild status
-        working-directory: app
-        run: |
-          if [ ! -d "android" ]; then
-            echo "Running Expo prebuild for Android..."
-            npx expo prebuild --platform android --clean
-          else
-            echo "Android prebuilt directory found, skipping prebuild"
-          fi
+          echo "Updated app.json: expo.version=$(jq -r '.expo.version' app.json)"
+          npx expo prebuild --platform android --clean
 
       - name: Build APK using Gradle
         working-directory: app/android
@@ -215,31 +206,22 @@ jobs:
         working-directory: app
         run: npm install
 
-      - name: Read version from .VERSION and sync to app.json
-        id: version
+      - name: Sync .VERSION into app.json and run prebuild
+        working-directory: app
         run: |
-          VERSION=$(cat .VERSION | tr -d '\r\n' | xargs)
-          echo "version=${VERSION}" >> $GITHUB_OUTPUT
-          # Generate CFBundleVersion: MAJOR * 10000 + MINOR * 100 + PATCH
+          VERSION=$(cat ../.VERSION | tr -d '\r\n' | xargs)
+          echo ".VERSION = ${VERSION}"
           IFS='.' read -r MAJOR MINOR PATCH <<< "$VERSION"
           BUNDLE_VERSION=$((MAJOR * 10000 + MINOR * 100 + PATCH))
-          echo "bundle_version=${BUNDLE_VERSION}" >> $GITHUB_OUTPUT
-          # Write version into app.json so expo-build-properties picks it up
+          echo "bundleVersion = ${BUNDLE_VERSION}"
+
           tmp=$(mktemp)
           jq --arg v "$VERSION" --arg bv "$BUNDLE_VERSION" \
             '.expo.version = $v | .expo.plugins |= map(if .[0] == "expo-build-properties" then .[1].ios.buildNumber = $bv else . end)' \
-            app/app.json > "$tmp" && mv "$tmp" app/app.json
-          echo "Version: ${VERSION}, BundleVersion: ${BUNDLE_VERSION}"
+            app.json > "$tmp" && mv "$tmp" app.json
 
-      - name: Check Expo prebuild status
-        working-directory: app
-        run: |
-          if [ ! -d "ios" ] || [ ! -d "android" ]; then
-            echo "Running Expo prebuild..."
-            npx expo prebuild --clean
-          else
-            echo "Prebuilt directories found, skipping prebuild"
-          fi
+          echo "Updated app.json: expo.version=$(jq -r '.expo.version' app.json)"
+          npx expo prebuild --clean
 
       - name: Install CocoaPods dependencies
         working-directory: app/ios

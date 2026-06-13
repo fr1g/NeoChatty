@@ -2879,7 +2879,7 @@ expo-asset@~55.0.17:
     "@expo/image-utils" "^0.8.14"
     expo-constants "~55.0.16"
 
-expo-build-properties@~0.15.5:
+expo-build-properties@55.0.11:
   version "55.0.11"
   resolved "https://registry.yarnpkg.com/expo-build-properties/-/expo-build-properties-55.0.11.tgz#90b9766bee1603a37d204c384f64e42d960bebc2"
   integrity sha512-r/CvGqWPxP2pEfR3WQfQjJqgVMQvVqF6rGMN0wAf3HXqzPpvEZt/jB3gDAHIeUpFl3IwpxwBaAgX0rDYoftw9Q==
