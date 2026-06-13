@@ -15,7 +15,7 @@
     "ios": {
       "supportsTablet": true,
       "jsEngine": "jsc",
-      "bundleIdentifier": "moe.vot.public.chatty.expo",
+      "bundleIdentifier": "moe.vot.pub.chatty.expo",
       "infoPlist": {
         "NSAppTransportSecurity": {
           "NSAllowsArbitraryLoads": true
@@ -30,7 +30,7 @@
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
       "predictiveBackGestureEnabled": false,
-      "package": "moe.vot.public.chatty.expo",
+      "package": "moe.vot.pub.chatty.expo",
       "permissions": [
         "android.permission.BLUETOOTH",
         "android.permission.BLUETOOTH_ADMIN",
