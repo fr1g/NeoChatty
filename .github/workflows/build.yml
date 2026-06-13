@@ -221,7 +221,11 @@ jobs:
             app.json > "$tmp" && mv "$tmp" app.json
 
           echo "Updated app.json: expo.version=$(jq -r '.expo.version' app.json)"
-          npx expo prebuild --clean
+          npx expo prebuild --platform ios --clean
+          echo "=== Checking prebuild output ==="
+          echo "Podfile: $(test -f ios/Podfile && echo EXISTS || echo MISSING)"
+          echo "xcworkspace: $(ls -d ios/*.xcworkspace 2>/dev/null || echo MISSING)"
+          echo "xcodeproj: $(ls -d ios/*.xcodeproj 2>/dev/null || echo MISSING)"
 
       - name: Install CocoaPods dependencies
         working-directory: app/ios
