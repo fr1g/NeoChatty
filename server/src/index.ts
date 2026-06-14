@@ -143,6 +143,10 @@ function logServerAddresses(port: string | number) {
     }
 }
 
+const logExit = () => {
+    console.log('Chatty: stopping!');
+}
+
 async function start() {
     try {
         console.log('Chatty: Starting server...');
@@ -166,6 +170,12 @@ async function start() {
         process.exit(1);
     }
 }
+
+process.on('SIGINT', () => {
+    logExit();
+    process.exit(0);
+});
+
 start();
 
 const scriptDir = __dirname;
