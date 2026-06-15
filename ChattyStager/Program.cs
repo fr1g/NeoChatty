@@ -1,8 +1,11 @@
 using ChattyStager.Components;
 using ChattyStager.Helpers;
+using ChattyStager.Services;
 using TailwindBlazor;
 
 AppSettingsHelper.AppSettingsCheck();
+Environment.SetEnvironmentVariable("DOTNET_hostBuilder__reloadConfigOnChange", "false");
+Environment.SetEnvironmentVariable("ASPNETCORE_hostBuilder__reloadConfigOnChange", "false");
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -10,6 +13,13 @@ builder.UseTailwind();
 
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
+builder.Services.AddHttpClient<GitHubActionsArtifactService>();
+builder.Services.AddHttpClient<BackendSupervisorService>();
+builder.Services.AddSingleton<StagerConfigService>();
+builder.Services.AddSingleton<SystemInspectionService>();
+builder.Services.AddSingleton<DatabaseSetupService>();
+builder.Services.AddSingleton<ArtifactDeploymentService>();
+builder.Services.AddSingleton<DashboardMetricsService>();
 
 var app = builder.Build();
 

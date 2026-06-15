@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="JavaScriptLibraryMappings">
+    <excludedPredefinedLibrary name="ChattyStager/deploy/tmp/backend-1781467269055/node_modules/jsonwebtoken/node_modules" />
+    <excludedPredefinedLibrary name="ChattyStager/deploy/tmp/backend-1781467269055/node_modules/mysql2/node_modules" />
+    <excludedPredefinedLibrary name="ChattyStager/deploy/tmp/backend-1781467269055/node_modules/sequelize/node_modules" />
+    <excludedPredefinedLibrary name="ChattyStager/deploy/tmp/backend-1781467269055/node_modules/socket.io/node_modules" />
+  </component>
+</project>

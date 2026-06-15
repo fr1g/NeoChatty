@@ -1,6 +1,303 @@
-﻿@page "/Settings"
-<h3>Settings</h3>
+@page "/Settings"
+@rendermode InteractiveServer
+@implements IDisposable
+
+@inject StagerConfigService ConfigService
+@inject BackendSupervisorService BackendSupervisor
+@inject DatabaseSetupService DatabaseSetup
+@inject IJSRuntime JS
+
+<PageTitle>Settings</PageTitle>
+
+<main class="p-6 space-y-6">
+    <header>
+        <h1 class="text-3xl font-semibold text-slate-950">Backend Settings</h1>
+        <p class="text-slate-500">Edit generated backend config and control the managed backend process.</p>
+    </header>
+
+    @if (!string.IsNullOrWhiteSpace(status))
+    {
+        <p class="alert-info" role="status">@status</p>
+    }
+    @if (!string.IsNullOrWhiteSpace(error))
+    {
+        <p class="alert-error" role="alert">@error</p>
+    }
+
+    @if (config == null)
+    {
+        <section class="panel">Loading settings...</section>
+    }
+    else
+    {
+        <section class="panel">
+            <h2 class="section-title">Service Control</h2>
+            <p class="text-sm text-slate-500">@backendStatus.Message</p>
+            <dl class="mt-3 grid grid-cols-1 gap-3 text-sm md:grid-cols-3">
+                <div>
+                    <dt class="text-slate-500">PID</dt>
+                    <dd class="font-mono">@(backendStatus.ProcessId?.ToString() ?? "N/A")</dd>
+                </div>
+                <div>
+                    <dt class="text-slate-500">Health</dt>
+                    <dd class="@(backendStatus.HealthOk ? "text-green-700" : "text-red-700")">@(backendStatus.HealthOk ? "OK" : "Failed")</dd>
+                </div>
+                <div>
+                    <dt class="text-slate-500">Log</dt>
+                    <dd class="font-mono break-all">@backendStatus.LogPath</dd>
+                </div>
+            </dl>
+            <div class="mt-4 flex flex-wrap gap-3">
+                <button type="button" class="btn-primary" @onclick="StartBackendAsync" disabled="@(busy || backendStatus.IsRunning)">Start Backend</button>
+                <button type="button" class="btn-secondary" @onclick="StopBackendAsync" disabled="@(busy || !backendStatus.IsRunning)">Stop Backend</button>
+                <button type="button" class="btn-secondary" @onclick="RefreshStatusAsync" disabled="@busy">Refresh Status</button>
+                <button type="button" class="btn-secondary" @onclick="TestDatabaseAsync" disabled="@busy">Test Database</button>
+            </div>
+            <details class="mt-4" open="@showLogs">
+                <summary class="cursor-pointer text-sm font-medium text-slate-700" @onclick="ToggleLogsAsync">Console Log</summary>
+                <pre @ref="logPreElement" class="mt-2 h-72 max-h-72 overflow-auto rounded bg-slate-950 p-3 text-xs text-slate-50 font-mono whitespace-pre-wrap break-all" tabindex="0"><code>@(string.IsNullOrWhiteSpace(consoleLog) ? "No log output yet." : consoleLog)</code></pre>
+            </details>
+        </section>
+
+        <EditForm Model="config" OnValidSubmit="SaveAsync" class="panel space-y-5">
+            <DataAnnotationsValidator />
+            <h2 class="section-title">Backend Runtime</h2>
+            <div class="form-grid">
+                <label>
+                    <span>Backend working directory</span>
+                    <InputText name="backendWorkingDirectory" class="form-input" @bind-Value="config.BackendWorkingDirectory" />
+                </label>
+                <label>
+                    <span>Backend executable</span>
+                    <InputText name="backendExecutable" class="form-input" @bind-Value="config.BackendExecutable" />
+                </label>
+                <label>
+                    <span>Backend arguments</span>
+                    <InputText name="backendArguments" class="form-input" @bind-Value="config.BackendArguments" />
+                </label>
+                <label>
+                    <span>Health URL</span>
+                    <InputText name="healthUrl" class="form-input" @bind-Value="config.HealthUrl" />
+                </label>
+                <label>
+                    <span>Log directory</span>
+                    <InputText name="logDirectory" class="form-input" @bind-Value="config.LogDirectory" />
+                </label>
+                <label>
+                    <span>Server config path</span>
+                    <InputText name="serverConfigPath" class="form-input" @bind-Value="config.ServerConfigPath" />
+                </label>
+            </div>
+
+            <label>
+                <span class="mb-1 block text-sm font-medium text-slate-700">Backend environment (KEY=value per line)</span>
+                <InputTextArea name="backendEnvironment" class="form-input min-h-28" @bind-Value="config.BackendEnvironment" />
+            </label>
+
+            <h2 class="section-title">Database</h2>
+            <div class="form-grid">
+                <label>
+                    <span>Database host</span>
+                    <InputText name="mysqlHost" class="form-input" @bind-Value="config.MySqlAddr" />
+                </label>
+                <label>
+                    <span>Database port</span>
+                    <InputNumber name="mysqlPort" class="form-input" @bind-Value="config.MySqlPort" />
+                </label>
+                <label>
+                    <span>Database name</span>
+                    <InputText name="mysqlDatabase" class="form-input" @bind-Value="config.MySqlDatabase" />
+                </label>
+                <label>
+                    <span>Database user</span>
+                    <InputText name="mysqlUser" class="form-input" @bind-Value="config.MySqlUser" />
+                </label>
+                <label>
+                    <span>Database password</span>
+                    <InputText name="mysqlPassword" type="password" autocomplete="current-password" class="form-input" @bind-Value="config.MySqlPassword" />
+                </label>
+                <label>
+                    <span>Server port</span>
+                    <InputNumber name="serverPort" class="form-input" @bind-Value="config.ServerPort" />
+                </label>
+            </div>
+
+            <div class="form-grid">
+                <label>
+                    <span>MOTD</span>
+                    <InputText name="motd" class="form-input" @bind-Value="config.Motd" />
+                </label>
+                <label>
+                    <span>Info</span>
+                    <InputText name="info" class="form-input" @bind-Value="config.Info" />
+                </label>
+            </div>
+
+            <label class="inline-flex items-center gap-2 text-sm font-medium text-slate-700">
+                <InputCheckbox name="useHttps" class="h-5 w-5 accent-blue-600" @bind-Value="config.UseHttps" />
+                Use HTTPS in generated backend config
+            </label>
+
+            <div class="flex flex-wrap gap-3">
+                <button type="submit" class="btn-primary" disabled="@busy">Save Stager Config</button>
+                <button type="button" class="btn-secondary" @onclick="WriteServerConfigAsync" disabled="@busy">Write Backend Config</button>
+            </div>
+        </EditForm>
+    }
+</main>
 
 @code {
-    
+    private const int MaxLogLines = 200;
+    private static readonly string[] LogSeparator = ["\n"];
+
+    private StagerConfig? config;
+    private BackendRuntimeStatus backendStatus = new(false, null, null, null, "", false, "Backend status is unknown.", "");
+    private string status = "";
+    private string error = "";
+    private string consoleLog = "";
+    private bool busy;
+    private bool showLogs;
+    private Microsoft.AspNetCore.Components.ElementReference logPreElement;
+
+    protected override async Task OnInitializedAsync()
+    {
+        config = await ConfigService.LoadAsync();
+        await RefreshStatusAsync();
+        BackendSupervisor.OnLogLine += HandleLogLine;
+    }
+
+    private void HandleLogLine(string line)
+    {
+        _ = InvokeAsync(async () =>
+        {
+            consoleLog = consoleLog + Environment.NewLine + line;
+            // Keep only the last N lines to avoid unbounded memory growth.
+            var lines = consoleLog.Split(LogSeparator, StringSplitOptions.None);
+            if (lines.Length > MaxLogLines)
+                consoleLog = string.Join(Environment.NewLine, lines[^MaxLogLines..]);
+            StateHasChanged();
+            await ScrollLogToBottomAsync();
+        });
+    }
+
+    private async Task ScrollLogToBottomAsync()
+    {
+        await JS.InvokeVoidAsync("scrollElementToBottom", logPreElement);
+    }
+
+    private async Task ToggleLogsAsync()
+    {
+        showLogs = !showLogs;
+        if (showLogs && config != null)
+        {
+            consoleLog = await BackendSupervisor.ReadRecentLogAsync(config);
+            StateHasChanged();
+            // Defer scroll until after the <details> open transition paints.
+            await Task.Delay(50);
+            await ScrollLogToBottomAsync();
+        }
+    }
+
+    public void Dispose()
+    {
+        BackendSupervisor.OnLogLine -= HandleLogLine;
+    }
+
+    private async Task SaveAsync()
+    {
+        if (config == null)
+            return;
+
+        await ExecuteAsync(async () =>
+        {
+            await ConfigService.SaveAsync(config);
+            if (Directory.Exists(config.BackendWorkingDirectory))
+            {
+                await ConfigService.WriteServerConfigAsync(config);
+                status = $"Stager configuration saved and backend config written to {config.ServerConfigPath}.";
+                return;
+            }
+
+            status = "Stager configuration saved. Backend config will be written after backend artifact deployment.";
+        });
+    }
+
+    private async Task WriteServerConfigAsync()
+    {
+        if (config == null)
+            return;
+
+        await ExecuteAsync(async () =>
+        {
+            await ConfigService.WriteServerConfigAsync(config);
+            status = $"Backend config written to {config.ServerConfigPath}";
+        });
+    }
+
+    private async Task StartBackendAsync()
+    {
+        if (config == null)
+            return;
+
+        await ExecuteAsync(async () =>
+        {
+            await ConfigService.SaveAsync(config);
+            consoleLog = "";
+            backendStatus = await BackendSupervisor.StartAsync(config);
+            status = backendStatus.Message;
+            showLogs = true;
+        });
+    }
+
+    private async Task StopBackendAsync()
+    {
+        if (config == null)
+            return;
+
+        await ExecuteAsync(async () =>
+        {
+            backendStatus = await BackendSupervisor.StopAsync(config);
+            status = backendStatus.Message;
+        });
+    }
+
+    private async Task RefreshStatusAsync()
+    {
+        if (config == null)
+            return;
+        backendStatus = await BackendSupervisor.GetStatusAsync(config);
+    }
+
+    private async Task TestDatabaseAsync()
+    {
+        if (config == null)
+            return;
+
+        await ExecuteAsync(async () =>
+        {
+            var result = await DatabaseSetup.TestConnectionAsync(config);
+            if (!result.IsSupported)
+                throw new InvalidOperationException(result.Detected);
+            status = result.Message;
+        });
+    }
+
+    private async Task ExecuteAsync(Func<Task> action)
+    {
+        busy = true;
+        error = "";
+        status = "";
+        try
+        {
+            await action();
+        }
+        catch (Exception ex)
+        {
+            error = ex.Message;
+        }
+        finally
+        {
+            busy = false;
+        }
+    }
 }

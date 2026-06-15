@@ -1,0 +1,512 @@
+namespace ChattyStager.Services;
+
+using ChattyStager.Model;
+using System.IO.Compression;
+
+public class ArtifactDeploymentService
+{
+    private readonly StagerConfigService _configService;
+    private readonly GitHubActionsArtifactService _githubArtifacts;
+
+    public ArtifactDeploymentService(StagerConfigService configService, GitHubActionsArtifactService githubArtifacts)
+    {
+        _configService = configService;
+        _githubArtifacts = githubArtifacts;
+    }
+
+    public async Task<DeploymentResult> DeployBackendFromGitHubAsync(StagerConfig config, CancellationToken cancellationToken = default)
+    {
+        _configService.ApplyDefaults(config);
+        var logs = new List<OperationLogEntry>();
+        var steps = new List<DeploymentStepResult>();
+
+        try
+        {
+            var artifact = await RunStepAsync(steps, "Find backend artifact", logs, async () =>
+                await _githubArtifacts.FindLatestSuccessfulArtifactAsync(config, GitHubArtifactConstants.ServerArtifactName, logs, cancellationToken));
+
+            var zipPath = await RunStepAsync(steps, "Download backend artifact", logs, async () =>
+                await _githubArtifacts.DownloadArtifactAsync(config, artifact, _configService.GetArtifactCachePath(config), logs, cancellationToken));
+
+            var targetPath = await DeployBackendZipCoreAsync(config, zipPath, "backend", steps, logs, cancellationToken);
+
+            return new DeploymentResult(true, "Backend artifact deployed.", targetPath, steps, logs);
+        }
+        catch (Exception ex)
+        {
+            logs.Add(new OperationLogEntry(DateTimeOffset.Now, "error", ex.Message));
+            return new DeploymentResult(false, ex.Message, _configService.GetBackendDeployPath(config), steps, logs);
+        }
+    }
+
+    public async Task<(DeploymentResult Backend, DeploymentResult Webapp)> DeployBuildArtifactsFromGitHubAsync(StagerConfig config, CancellationToken cancellationToken = default)
+    {
+        _configService.ApplyDefaults(config);
+        var artifactLogs = new List<OperationLogEntry>();
+        try
+        {
+            var artifacts = await _githubArtifacts.FindLatestBuildArtifactsAsync(artifactLogs, cancellationToken);
+            var backend = await DeployBackendArtifactAsync(config, artifacts.Server, artifactLogs, cancellationToken);
+            if (!backend.Success)
+            {
+                return (backend, new DeploymentResult(
+                    false,
+                    "Web artifact deployment skipped because server artifact deployment failed.",
+                    _configService.GetWebDeployPath(config),
+                    [],
+                    artifactLogs));
+            }
+
+            var webapp = await DeployWebArtifactAsync(config, artifacts.Webapp, artifactLogs, cancellationToken);
+            return (backend, webapp);
+        }
+        catch (Exception ex)
+        {
+            artifactLogs.Add(new OperationLogEntry(DateTimeOffset.Now, "error", ex.Message));
+            return (
+                new DeploymentResult(false, ex.Message, _configService.GetBackendDeployPath(config), [], artifactLogs),
+                new DeploymentResult(false, ex.Message, _configService.GetWebDeployPath(config), [], artifactLogs));
+        }
+    }
+
+    public async Task<DeploymentResult> DeployWebFromGitHubAsync(StagerConfig config, CancellationToken cancellationToken = default)
+    {
+        _configService.ApplyDefaults(config);
+        var logs = new List<OperationLogEntry>();
+        var steps = new List<DeploymentStepResult>();
+
+        try
+        {
+            var artifact = await RunStepAsync(steps, "Find web artifact", logs, async () =>
+                await _githubArtifacts.FindLatestSuccessfulArtifactAsync(config, GitHubArtifactConstants.WebappArtifactName, logs, cancellationToken));
+
+            var zipPath = await RunStepAsync(steps, "Download web artifact", logs, async () =>
+                await _githubArtifacts.DownloadArtifactAsync(config, artifact, _configService.GetArtifactCachePath(config), logs, cancellationToken));
+
+            var extractedPath = await RunStepAsync(steps, "Extract web artifact", logs, () =>
+                Task.FromResult(ExtractZip(config, zipPath, "web")));
+
+            var webRoot = await RunStepAsync(steps, "Validate web artifact", logs, () =>
+                Task.FromResult(FindWebRoot(extractedPath)));
+
+            var targetPath = await RunStepAsync(steps, "Publish web artifact", logs, () =>
+            {
+                var target = _configService.GetWebDeployPath(config);
+                PublishWebRoot(webRoot, target);
+                return Task.FromResult(target);
+            });
+
+            await RunStepAsync(steps, "Verify webapp index", logs, () =>
+            {
+                VerifyPublishedWebRoot(targetPath);
+                return Task.FromResult(true);
+            });
+
+            return new DeploymentResult(true, "Web artifact deployed.", targetPath, steps, logs);
+        }
+        catch (Exception ex)
+        {
+            logs.Add(new OperationLogEntry(DateTimeOffset.Now, "error", ex.Message));
+            return new DeploymentResult(false, ex.Message, _configService.GetWebDeployPath(config), steps, logs);
+        }
+    }
+
+    private async Task<DeploymentResult> DeployBackendArtifactAsync(
+        StagerConfig config,
+        ArtifactInfo artifact,
+        IReadOnlyList<OperationLogEntry> artifactLogs,
+        CancellationToken cancellationToken)
+    {
+        var logs = artifactLogs.ToList();
+        var steps = new List<DeploymentStepResult>();
+
+        try
+        {
+            var zipPath = await RunStepAsync(steps, "Download backend artifact", logs, async () =>
+                await _githubArtifacts.DownloadArtifactAsync(config, artifact, _configService.GetArtifactCachePath(config), logs, cancellationToken));
+
+            var targetPath = await DeployBackendZipCoreAsync(config, zipPath, "backend", steps, logs, cancellationToken);
+
+            return new DeploymentResult(true, "Backend artifact deployed.", targetPath, steps, logs);
+        }
+        catch (Exception ex)
+        {
+            logs.Add(new OperationLogEntry(DateTimeOffset.Now, "error", ex.Message));
+            return new DeploymentResult(false, ex.Message, _configService.GetBackendDeployPath(config), steps, logs);
+        }
+    }
+
+    private async Task<DeploymentResult> DeployWebArtifactAsync(
+        StagerConfig config,
+        ArtifactInfo artifact,
+        IReadOnlyList<OperationLogEntry> artifactLogs,
+        CancellationToken cancellationToken)
+    {
+        var logs = artifactLogs.ToList();
+        var steps = new List<DeploymentStepResult>();
+
+        try
+        {
+            var zipPath = await RunStepAsync(steps, "Download web artifact", logs, async () =>
+                await _githubArtifacts.DownloadArtifactAsync(config, artifact, _configService.GetArtifactCachePath(config), logs, cancellationToken));
+
+            var extractedPath = await RunStepAsync(steps, "Extract web artifact", logs, () =>
+                Task.FromResult(ExtractZip(config, zipPath, "web")));
+
+            var webRoot = await RunStepAsync(steps, "Validate web artifact", logs, () =>
+                Task.FromResult(FindWebRoot(extractedPath)));
+
+            var targetPath = await RunStepAsync(steps, "Publish web artifact", logs, () =>
+            {
+                var target = _configService.GetWebDeployPath(config);
+                PublishWebRoot(webRoot, target);
+                return Task.FromResult(target);
+            });
+
+            await RunStepAsync(steps, "Verify webapp index", logs, () =>
+            {
+                VerifyPublishedWebRoot(targetPath);
+                return Task.FromResult(true);
+            });
+
+            return new DeploymentResult(true, "Web artifact deployed.", targetPath, steps, logs);
+        }
+        catch (Exception ex)
+        {
+            logs.Add(new OperationLogEntry(DateTimeOffset.Now, "error", ex.Message));
+            return new DeploymentResult(false, ex.Message, _configService.GetWebDeployPath(config), steps, logs);
+        }
+    }
+
+    public DeploymentResult DeployBackendFromZip(StagerConfig config, string zipPath)
+    {
+        _configService.ApplyDefaults(config);
+        var logs = new List<OperationLogEntry>();
+        var steps = new List<DeploymentStepResult>();
+        try
+        {
+            var target = DeployBackendZipCoreAsync(config, zipPath, "backend-local", steps, logs, CancellationToken.None)
+                .GetAwaiter()
+                .GetResult();
+            return new DeploymentResult(true, "Backend zip deployed.", target, steps, logs);
+        }
+        catch (Exception ex)
+        {
+            logs.Add(new OperationLogEntry(DateTimeOffset.Now, "error", ex.Message));
+            return new DeploymentResult(false, ex.Message, _configService.GetBackendDeployPath(config), steps, logs);
+        }
+    }
+
+    public DeploymentResult DeployWebFromZip(StagerConfig config, string zipPath)
+    {
+        _configService.ApplyDefaults(config);
+        var logs = new List<OperationLogEntry>();
+        var steps = new List<DeploymentStepResult>();
+        try
+        {
+            var extractedPath = RunStep(steps, "Extract web artifact", logs, () => ExtractZip(config, zipPath, "web-local"));
+            var webRoot = RunStep(steps, "Validate web artifact", logs, () => FindWebRoot(extractedPath));
+            var target = RunStep(steps, "Publish web artifact", logs, () =>
+            {
+                var publishTarget = _configService.GetWebDeployPath(config);
+                PublishWebRoot(webRoot, publishTarget);
+                return publishTarget;
+            });
+            RunStep(steps, "Verify webapp index", logs, () =>
+            {
+                VerifyPublishedWebRoot(target);
+                return true;
+            });
+            return new DeploymentResult(true, "Web zip deployed.", target, steps, logs);
+        }
+        catch (Exception ex)
+        {
+            logs.Add(new OperationLogEntry(DateTimeOffset.Now, "error", ex.Message));
+            return new DeploymentResult(false, ex.Message, _configService.GetWebDeployPath(config), steps, logs);
+        }
+    }
+
+    private string ExtractZip(StagerConfig config, string zipPath, string prefix)
+    {
+        if (!File.Exists(zipPath))
+            throw new FileNotFoundException("Artifact zip was not found.", zipPath);
+
+        var tempPath = Path.Combine(_configService.GetTempPath(config), $"{prefix}-{DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()}");
+        Directory.CreateDirectory(tempPath);
+        ZipFile.ExtractToDirectory(zipPath, tempPath, overwriteFiles: true);
+        return tempPath;
+    }
+
+    private async Task<string> DeployBackendZipCoreAsync(
+        StagerConfig config,
+        string zipPath,
+        string prefix,
+        List<DeploymentStepResult> steps,
+        List<OperationLogEntry> logs,
+        CancellationToken cancellationToken)
+    {
+        var extractedPath = await RunStepAsync(steps, "Extract backend artifact", logs, () =>
+            Task.FromResult(ExtractZip(config, zipPath, prefix)));
+
+        var backendRoot = await RunStepAsync(steps, "Validate backend artifact", logs, () =>
+            Task.FromResult(FindBackendRoot(extractedPath)));
+
+        if (config.InstallBackendProductionDependencies || !Directory.Exists(Path.Combine(backendRoot, "node_modules")))
+        {
+            await RunStepAsync(steps, "Install backend production dependencies", logs, async () =>
+            {
+                await InstallProductionDependenciesAsync(config, backendRoot, logs, cancellationToken);
+                return true;
+            });
+        }
+
+        var targetPath = await RunStepAsync(steps, "Publish backend artifact", logs, () =>
+        {
+            ReplaceDirectory(backendRoot, _configService.GetBackendDeployPath(config));
+            config.BackendWorkingDirectory = _configService.GetBackendDeployPath(config);
+            config.ServerConfigPath = Path.Combine(config.BackendWorkingDirectory, "chatty.server.config.js");
+            return Task.FromResult(config.BackendWorkingDirectory);
+        });
+
+        await RunStepAsync(steps, "Write backend config", logs, async () =>
+        {
+            await _configService.WriteServerConfigAsync(config);
+            return true;
+        });
+
+        return targetPath;
+    }
+
+    private static async Task InstallProductionDependenciesAsync(
+        StagerConfig config,
+        string backendRoot,
+        List<OperationLogEntry> logs,
+        CancellationToken cancellationToken)
+    {
+        var errors = new List<string>();
+        foreach (var executable in GetNpmCandidates(config))
+        {
+            try
+            {
+                var result = await ProcessRunner.RunAsync(
+                    executable,
+                    "install --production --no-audit --no-fund",
+                    backendRoot,
+                    timeout: TimeSpan.FromMinutes(8),
+                    logs: logs,
+                    cancellationToken: cancellationToken);
+
+                if (result.ExitCode == 0)
+                    return;
+
+                errors.Add($"{executable}: {BuildProcessFailure(result)}");
+            }
+            catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or FileNotFoundException)
+            {
+                errors.Add($"{executable}: {ex.Message}");
+            }
+        }
+
+        throw new InvalidOperationException($"Unable to install backend production dependencies. {string.Join(" | ", errors)}");
+    }
+
+    private static IEnumerable<string> GetNpmCandidates(StagerConfig config)
+    {
+        // Resolve the node directory via PATH lookup so we can locate npm next to node.
+        var nodeDir = ResolveNodeDirectory(config.BackendExecutable);
+
+        if (!string.IsNullOrWhiteSpace(nodeDir))
+        {
+            var adjacentNpm = Path.Combine(nodeDir, OperatingSystem.IsWindows() ? "npm.cmd" : "npm");
+            if (File.Exists(adjacentNpm))
+                yield return adjacentNpm;
+        }
+
+        // Fallback: on Windows, Process.Start with UseShellExecute=false cannot resolve .cmd files.
+        yield return OperatingSystem.IsWindows() ? "npm.cmd" : "npm";
+    }
+
+    private static string? ResolveNodeDirectory(string nodeExecutable)
+    {
+        // If already a rooted path, return its directory.
+        if (Path.IsPathRooted(nodeExecutable))
+            return Path.GetDirectoryName(nodeExecutable);
+
+        // Search PATH to find where node lives.
+        var pathExt = Environment.GetEnvironmentVariable("PATHEXT") ?? ".COM;.EXE;.BAT;.CMD";
+        var extensions = pathExt.Split(';', StringSplitOptions.RemoveEmptyEntries);
+
+        var pathDirs = (Environment.GetEnvironmentVariable("PATH") ?? "")
+            .Split(Path.PathSeparator, StringSplitOptions.RemoveEmptyEntries);
+
+        foreach (var dir in pathDirs)
+        {
+            foreach (var ext in extensions)
+            {
+                var fullPath = Path.Combine(dir, nodeExecutable + ext);
+                if (File.Exists(fullPath))
+                    return dir;
+            }
+        }
+
+        return null;
+    }
+
+    private static string BuildProcessFailure(ProcessRunResult result)
+    {
+        var message = string.Join(Environment.NewLine, new[] { result.Error, result.Output }
+            .Where(value => !string.IsNullOrWhiteSpace(value)))
+            .Trim();
+
+        return string.IsNullOrWhiteSpace(message)
+            ? $"exit code {result.ExitCode}"
+            : message;
+    }
+
+    private static string FindBackendRoot(string extractedPath)
+    {
+        var packageJson = Directory
+            .EnumerateFiles(extractedPath, "package.json", SearchOption.AllDirectories)
+            .OrderBy(path => path.Length)
+            .FirstOrDefault();
+
+        if (packageJson == null)
+            throw new InvalidOperationException("Backend artifact must contain package.json.");
+
+        var root = Path.GetDirectoryName(packageJson)!;
+        if (!Directory.Exists(Path.Combine(root, "dist")))
+            throw new InvalidOperationException("Backend artifact must contain dist/.");
+
+        return root;
+    }
+
+    private static string FindWebRoot(string extractedPath)
+    {
+        var indexFile = Directory
+            .EnumerateFiles(extractedPath, "index.html", SearchOption.AllDirectories)
+            .OrderBy(path => path.Length)
+            .FirstOrDefault();
+
+        if (indexFile == null)
+            throw new InvalidOperationException("Web artifact must contain index.html.");
+
+        return Path.GetDirectoryName(indexFile)!;
+    }
+
+    private static void ReplaceDirectory(string source, string target)
+    {
+        var parent = Path.GetDirectoryName(target)!;
+        Directory.CreateDirectory(parent);
+        var staging = $"{target}.next-{DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()}";
+        MoveOrCopyDirectory(source, staging);
+
+        var backup = $"{target}.bak-{DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()}";
+        if (Directory.Exists(target))
+            Directory.Move(target, backup);
+
+        Directory.Move(staging, target);
+        if (Directory.Exists(backup))
+            Directory.Delete(backup, recursive: true);
+    }
+
+    private static void PublishWebRoot(string source, string target)
+    {
+        Directory.CreateDirectory(target);
+        foreach (var directory in Directory.GetDirectories(target))
+        {
+            if (IsProtectedWebRootEntry(Path.GetFileName(directory)))
+                continue;
+            Directory.Delete(directory, recursive: true);
+        }
+
+        foreach (var file in Directory.GetFiles(target))
+        {
+            if (IsProtectedWebRootEntry(Path.GetFileName(file)))
+                continue;
+            File.Delete(file);
+        }
+
+        CopyDirectory(source, target);
+    }
+
+    private static void VerifyPublishedWebRoot(string target)
+    {
+        if (!File.Exists(Path.Combine(target, "index.html")))
+            throw new InvalidOperationException("Web artifact deployment failed because wwwroot/index.html was not found.");
+    }
+
+    private static bool IsProtectedWebRootEntry(string name)
+    {
+        return name is ".gitignore" or "css" or "favicon.png";
+    }
+
+    private static void MoveOrCopyDirectory(string source, string target)
+    {
+        try
+        {
+            Directory.Move(source, target);
+        }
+        catch (IOException)
+        {
+            CopyDirectory(source, target);
+        }
+    }
+
+    private static void CopyDirectory(string source, string target)
+    {
+        Directory.CreateDirectory(target);
+        foreach (var directory in Directory.GetDirectories(source, "*", SearchOption.AllDirectories))
+        {
+            Directory.CreateDirectory(Path.Combine(target, Path.GetRelativePath(source, directory)));
+        }
+
+        foreach (var file in Directory.GetFiles(source, "*", SearchOption.AllDirectories))
+        {
+            var relative = Path.GetRelativePath(source, file);
+            var targetFile = Path.Combine(target, relative);
+            Directory.CreateDirectory(Path.GetDirectoryName(targetFile)!);
+            File.Copy(file, targetFile, overwrite: true);
+        }
+    }
+
+    private static async Task<T> RunStepAsync<T>(
+        List<DeploymentStepResult> steps,
+        string name,
+        List<OperationLogEntry> logs,
+        Func<Task<T>> action)
+    {
+        logs.Add(new OperationLogEntry(DateTimeOffset.Now, "info", name));
+        try
+        {
+            var result = await action();
+            steps.Add(new DeploymentStepResult(name, OperationState.Success, "Done"));
+            return result;
+        }
+        catch (Exception ex)
+        {
+            steps.Add(new DeploymentStepResult(name, OperationState.Failed, ex.Message));
+            throw;
+        }
+    }
+
+    private static T RunStep<T>(
+        List<DeploymentStepResult> steps,
+        string name,
+        List<OperationLogEntry> logs,
+        Func<T> action)
+    {
+        logs.Add(new OperationLogEntry(DateTimeOffset.Now, "info", name));
+        try
+        {
+            var result = action();
+            steps.Add(new DeploymentStepResult(name, OperationState.Success, "Done"));
+            return result;
+        }
+        catch (Exception ex)
+        {
+            steps.Add(new DeploymentStepResult(name, OperationState.Failed, ex.Message));
+            throw;
+        }
+    }
+
+}

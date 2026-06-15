@@ -1,3 +1,12 @@
 ﻿# cs output
 /bin
 /obj
+
+# chatty deployment
+/deploy
+/ex
+/wwwroot/assets
+/wwwroot/index.html
+/wwwroot/favicon.png
+/wwwroot/vite.svg
+/chatty-server
