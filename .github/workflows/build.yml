@@ -67,6 +67,12 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Inject version into service worker
+        run: |
+          VERSION=$(cat .VERSION | tr -d '\r\n' | xargs)
+          echo "Injecting version: ${VERSION}"
+          sed -i "s/versionPlaceHolder/${VERSION}/g" webapp/public/service-worker.js
+
       - name: Setup pnpm
         uses: pnpm/action-setup@v2
         with:
