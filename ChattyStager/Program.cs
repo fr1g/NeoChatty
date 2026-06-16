@@ -49,7 +49,7 @@ app.MapWhen(ctx => ctx.Request.Path.StartsWithSegments("/stager"), stagerBranch 
 {
     var configService = stagerBranch.ApplicationServices.GetRequiredService<StagerConfigService>();
 
-    // --- Login endpoint (POST, must run before auth middleware) ---
+    // --- Login endpoint must run before auth middleware ---
     stagerBranch.MapWhen(ctx =>
         ctx.Request.Method == "POST" &&
         (ctx.Request.Path.Value?.EndsWith("/login", StringComparison.OrdinalIgnoreCase) == true),
