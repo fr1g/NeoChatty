@@ -38,38 +38,63 @@ public class GitHubActionsArtifactService
         if (releases.Count == 0)
             throw new InvalidOperationException("No GitHub releases were found.");
 
-        var latestRelease = releases[0];
-        var releaseName = latestRelease.TryGetProperty("name", out var nameElement) ? nameElement.GetString() : null;
-        var releaseTag = latestRelease.TryGetProperty("tag_name", out var tagElement) ? tagElement.GetString() : null;
-        logs.Add(new OperationLogEntry(DateTimeOffset.Now, "info", $"Using release `{releaseName ?? releaseTag ?? "latest"}`."));
+        // Find the release with the most recent created_at that contains both required assets.
+        JsonElement? bestRelease = null;
+        DateTimeOffset bestCreatedAt = DateTimeOffset.MinValue;
+        ArtifactInfo? bestServer = null;
+        ArtifactInfo? bestWebapp = null;
 
-        ArtifactInfo? server = null;
-        ArtifactInfo? webapp = null;
-
-        foreach (var asset in latestRelease.GetProperty("assets").EnumerateArray())
+        foreach (var release in releases)
         {
-            var name = asset.GetProperty("name").GetString() ?? "";
-            if (server == null && string.Equals(name, GitHubArtifactConstants.ServerArtifactName, StringComparison.OrdinalIgnoreCase))
+            if (!release.TryGetProperty("created_at", out var createdAtElement))
+                continue;
+
+            var createdAt = createdAtElement.GetDateTimeOffset();
+            if (createdAt <= bestCreatedAt)
+                continue;
+
+            // Try to match required assets within this release.
+            ArtifactInfo? server = null;
+            ArtifactInfo? webapp = null;
+
+            if (release.TryGetProperty("assets", out var assetsElement))
             {
-                server = CreateArtifactInfo(asset);
-                logs.Add(new OperationLogEntry(DateTimeOffset.Now, "info", $"Matched artifact `{server.Name}` ({server.SizeInBytes} bytes)."));
-            }
-            else if (webapp == null && string.Equals(name, GitHubArtifactConstants.WebappArtifactName, StringComparison.OrdinalIgnoreCase))
-            {
-                webapp = CreateArtifactInfo(asset);
-                logs.Add(new OperationLogEntry(DateTimeOffset.Now, "info", $"Matched artifact `{webapp.Name}` ({webapp.SizeInBytes} bytes)."));
+                foreach (var asset in assetsElement.EnumerateArray())
+                {
+                    var name = asset.TryGetProperty("name", out var nameProp) ? nameProp.GetString() : null;
+                    if (name == null)
+                        continue;
+
+                    if (server == null && string.Equals(name, GitHubArtifactConstants.ServerArtifactName, StringComparison.OrdinalIgnoreCase))
+                        server = CreateArtifactInfo(asset);
+                    else if (webapp == null && string.Equals(name, GitHubArtifactConstants.WebappArtifactName, StringComparison.OrdinalIgnoreCase))
+                        webapp = CreateArtifactInfo(asset);
+
+                    if (server != null && webapp != null)
+                        break;
+                }
             }
 
             if (server != null && webapp != null)
-                return (server, webapp);
+            {
+                bestRelease = release;
+                bestCreatedAt = createdAt;
+                bestServer = server;
+                bestWebapp = webapp;
+            }
         }
 
-        var missing = string.Join(", ", new[]
-        {
-            server == null ? GitHubArtifactConstants.ServerArtifactName : "",
-            webapp == null ? GitHubArtifactConstants.WebappArtifactName : "",
-        }.Where(value => !string.IsNullOrWhiteSpace(value)));
-        throw new InvalidOperationException($"Required release asset(s) not found in latest release: {missing}.");
+        if (bestRelease == null)
+            throw new InvalidOperationException($"No release contains both `{GitHubArtifactConstants.ServerArtifactName}` and `{GitHubArtifactConstants.WebappArtifactName}` assets.");
+
+        var releaseName = bestRelease.Value.TryGetProperty("name", out var nameElement) ? nameElement.GetString() : null;
+        var releaseTag = bestRelease.Value.TryGetProperty("tag_name", out var tagElement) ? tagElement.GetString() : null;
+        logs.Add(new OperationLogEntry(DateTimeOffset.Now, "info", $"Using release `{releaseName ?? releaseTag ?? "latest"}` (created {bestCreatedAt:O})."));
+
+        logs.Add(new OperationLogEntry(DateTimeOffset.Now, "info", $"Matched artifact `{bestServer!.Name}` ({bestServer.SizeInBytes} bytes)."));
+        logs.Add(new OperationLogEntry(DateTimeOffset.Now, "info", $"Matched artifact `{bestWebapp!.Name}` ({bestWebapp.SizeInBytes} bytes)."));
+
+        return (bestServer, bestWebapp);
     }
 
     public async Task<string> DownloadArtifactAsync(

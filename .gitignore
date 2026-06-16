@@ -54,3 +54,4 @@ llm.*
 */_ignore
 
 .$*
+ChattyStager/ChattyStager.json

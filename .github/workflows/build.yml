@@ -476,9 +476,7 @@ jobs:
           # Ensure headings in commit message are max h3
           SAFE_COMMIT_MSG=$(echo "$COMMIT_MSG" | sed 's/^## /### /g; s/^# /### /g')
 
-          cat > release_body.md << 'BODY_EOF'
-Automated build from commit `${{ github.sha }}`
-BODY_EOF
+          echo "Automated build from commit \`${{ github.sha }}\`" > release_body.md
 
           echo "" >> release_body.md
           echo "## ${CLEAN_TITLE}" >> release_body.md
