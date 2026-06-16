@@ -196,6 +196,9 @@ router.post('/login', async (req, res) => {
         if (!user) {
             return error(res, 'UNAUTHORIZED', 'Invalid username or password', 401);
         }
+        if (user.disabled) {
+            return error(res, 'FORBIDDEN', 'This account has been disabled', 403);
+        }
         const valid = await bcrypt.compare(password, user.password_hash);
         if (!valid) {
             return error(res, 'UNAUTHORIZED', 'Invalid username or password', 401);
@@ -271,9 +274,9 @@ router.post('/refresh', async (req, res) => {
         }
         const decoded = jwt.verify(refreshToken, JWT_REFRESH_SECRET) as JwtPayload;
         const user = await User.findByPk(decoded.userId, {
-            attributes: ['id', 'token_version'],
+            attributes: ['id', 'token_version', 'disabled'],
         });
-        if (!user || user.token_version !== decoded.tokenVersion) {
+        if (!user || user.token_version !== decoded.tokenVersion || user.disabled) {
             return error(res, 'UNAUTHORIZED', 'Refresh token has expired', 401);
         }
         const newAccessToken = generateAccessToken(user.id, user.token_version);

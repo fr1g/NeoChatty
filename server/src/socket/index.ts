@@ -56,9 +56,9 @@ export function setupSocket(httpServer: HttpServer) {
             }
             const decoded = jwt.verify(token, JWT_SECRET) as JwtPayload;
             const user = await User.findByPk(decoded.userId, {
-                attributes: ['id', 'token_version'],
+                attributes: ['id', 'token_version', 'disabled'],
             });
-            if (!user || user.token_version !== decoded.tokenVersion) {
+            if (!user || user.token_version !== decoded.tokenVersion || user.disabled) {
                 return next(new Error('Token has expired'));
             }
             (socket as any).userId = decoded.userId;
