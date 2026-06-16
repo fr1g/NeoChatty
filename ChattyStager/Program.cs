@@ -1,7 +1,10 @@
+using System.Text;
 using ChattyStager.Components;
 using ChattyStager.Helpers;
 using ChattyStager.Services;
 using TailwindBlazor;
+
+string[] protectedRoutes = ["/", "/Setup", "/Settings", "/ManageUser", "/Error", "/not-found", "/Lock"];
 
 AppSettingsHelper.AppSettingsCheck();
 Environment.SetEnvironmentVariable("DOTNET_hostBuilder__reloadConfigOnChange", "false");
@@ -44,6 +47,99 @@ app.MapWhen(ctx => !ctx.Request.Path.StartsWithSegments("/stager"), spaBranch =>
 
 app.MapWhen(ctx => ctx.Request.Path.StartsWithSegments("/stager"), stagerBranch =>
 {
+    var configService = stagerBranch.ApplicationServices.GetRequiredService<StagerConfigService>();
+
+    // --- Login endpoint (POST, must run before auth middleware) ---
+    stagerBranch.MapWhen(ctx =>
+        ctx.Request.Method == "POST" &&
+        (ctx.Request.Path.Value?.EndsWith("/login", StringComparison.OrdinalIgnoreCase) == true),
+        loginBranch =>
+    {
+        loginBranch.Run(async (ctx) =>
+        {
+            var form = await ctx.Request.ReadFormAsync();
+            var passkey = form["passkey"].FirstOrDefault() ?? "";
+
+            var config = await configService.LoadAsync();
+
+            if (string.IsNullOrWhiteSpace(config.PassKey) || passkey != config.PassKey)
+            {
+                ctx.Response.Redirect($"/stager/Login?Error={Uri.EscapeDataString("Invalid passkey.")}");
+                return;
+            }
+
+            var expiry = DateTimeOffset.UtcNow.AddHours(1);
+            ctx.Response.Cookies.Append("stager_auth",
+                Convert.ToBase64String(Encoding.UTF8.GetBytes(expiry.ToUnixTimeSeconds().ToString())),
+                new CookieOptions
+                {
+                    HttpOnly = true,
+                    SameSite = SameSiteMode.Strict,
+                    Expires = expiry,
+                    Path = "/stager",
+                });
+
+            ctx.Response.Redirect("/stager/");
+        });
+    });
+
+    // --- Logout endpoint (POST, must run before auth middleware) ---
+    stagerBranch.MapWhen(ctx =>
+        ctx.Request.Method == "POST" &&
+        (ctx.Request.Path.Value?.EndsWith("/logout", StringComparison.OrdinalIgnoreCase) == true),
+        logoutBranch =>
+    {
+        logoutBranch.Run(async (ctx) =>
+        {
+            ctx.Response.Cookies.Delete("stager_auth", new CookieOptions
+            {
+                HttpOnly = true,
+                SameSite = SameSiteMode.Strict,
+                Path = "/stager",
+            });
+
+            ctx.Response.Redirect("/stager/Login");
+            await Task.CompletedTask;
+        });
+    });
+
+    // --- Auth middleware ---
+    stagerBranch.Use(async (ctx, next) =>
+    {
+        var path = ctx.Request.Path.Value ?? "";
+
+        var normalized = path.TrimEnd('/');
+
+        if (normalized.EndsWith("/Login", StringComparison.OrdinalIgnoreCase))
+        {
+            await next();
+            return;
+        }
+
+        var config = await configService.LoadAsync();
+        if (!config.IsSetUp && normalized.EndsWith("/Setup", StringComparison.OrdinalIgnoreCase))
+        {
+            await next();
+            return;
+        }
+
+        var isProtected = protectedRoutes.Any(r =>
+        {
+            return normalized.EndsWith(r, StringComparison.OrdinalIgnoreCase) || normalized == "/stager/" || normalized == "/stager";
+        });
+        if ((!isProtected) || (ctx.Request.Cookies.TryGetValue("stager_auth", out var cookieValue) &&
+                               TryValidateAuthCookie(cookieValue)))
+        {
+            await next();
+            return;
+        }
+
+        // Not set up → setup; otherwise → login
+        if (!config.IsSetUp)
+            ctx.Response.Redirect("/stager/Setup");
+        else
+            ctx.Response.Redirect("/stager/Login");
+    });
 
     stagerBranch.UsePathBase("/stager");
     stagerBranch.UseStaticFiles();
@@ -55,9 +151,26 @@ app.MapWhen(ctx => ctx.Request.Path.StartsWithSegments("/stager"), stagerBranch 
 
         endpoints.MapRazorComponents<App>()
             .AddInteractiveServerRenderMode();
-        // endpoints.MapBlazorHub("/_blazor"); 
     });
 });
+
+static bool TryValidateAuthCookie(string cookieValue)
+{
+    try
+    {
+        var decoded = Encoding.UTF8.GetString(Convert.FromBase64String(cookieValue));
+        if (long.TryParse(decoded, out var expirySeconds))
+        {
+            var expiry = DateTimeOffset.FromUnixTimeSeconds(expirySeconds);
+            return expiry > DateTimeOffset.UtcNow;
+        }
+    }
+    catch
+    {
+        // invalid cookie — reject
+    }
+    return false;
+}
 
 //
 // app.UseStaticFiles();

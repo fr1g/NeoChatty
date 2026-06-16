@@ -37,7 +37,7 @@ public class BackendSupervisorService
             _startedAt,
             config.HealthUrl,
             healthOk,
-            isRunning ? "Backend is running and healthy." : "Backend is stopped or unhealthy.",
+            isRunning ? "Backend is running and healthy." : "Backend stopped. Start backend in Settings.",
             _configService.GetBackendLogPath(config));
     }
 

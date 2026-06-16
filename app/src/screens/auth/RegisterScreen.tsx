@@ -28,8 +28,9 @@ const RegisterScreen: React.FC = () => {
             Alert.alert('Notice', 'Please enter a password');
             return;
         }
-        if (password.length < 6) {
-            Alert.alert('Notice', 'Password must be at least 6 characters');
+        const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{6,}$/;
+        if (!passwordRegex.test(password)) {
+            Alert.alert('Notice', 'Password must be at least 6 characters and include uppercase, lowercase, and a number');
             return;
         }
         if (password !== confirmPassword) {

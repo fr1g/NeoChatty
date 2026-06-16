@@ -1,0 +1,23 @@
+@page "/Lock"
+@rendermode InteractiveServer
+
+@inject NavigationManager NavigationManager
+
+<PageTitle>Lock - ChattyStager</PageTitle>
+
+<main class="flex min-h-screen items-center justify-center bg-slate-100">
+    <div class="w-full max-w-sm rounded-lg bg-white p-8 text-center shadow-md">
+        <h1 class="mb-4 text-2xl font-semibold text-slate-900">Lock Stager</h1>
+        <p class="mb-6 text-sm text-slate-500">End your current session? You will need the passkey to sign in again.</p>
+        <div class="flex justify-center gap-4">
+            <form method="post" action="/stager/logout">
+                <button type="submit" class="btn-danger">
+                    Yes
+                </button>
+            </form>
+            <a href="/stager/" class="btn-secondary">
+                No
+            </a>
+        </div>
+    </div>
+</main>

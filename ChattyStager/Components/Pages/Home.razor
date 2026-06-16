@@ -5,17 +5,23 @@
 @inject StagerConfigService ConfigService
 @inject DashboardMetricsService DashboardMetrics
 
+@using ChattyStager.Components.Parts
 <PageTitle>Dashboard</PageTitle>
 
 <main class="p-6 space-y-6">
     <header class="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
-            <h1 class="text-3xl font-semibold text-slate-950">Chatty Dashboard</h1>
+            <h1 class="text-3xl font-semibold text-slate-950">ChattyStager Dashboard</h1>
             <p class="text-slate-500">System, database, and managed backend status.</p>
         </div>
-        <button type="button" class="btn-primary" @onclick="LoadDashboardAsync" disabled="@loading">
-            @(loading ? "Refreshing..." : "Refresh")
-        </button>
+        <div class="space-x-3">
+            <Button UsePresetClass="false" Mode="@Button.ButtonMode.Anchor" class="btn-danger" Href="./Lock" Target="_self">
+                Lock Session
+            </Button>
+            <button type="button" class="btn-primary" @onclick="LoadDashboardAsync" disabled="@loading">
+                @(loading ? "Refreshing..." : "Refresh")
+            </button>
+        </div>
     </header>
 
     @if (!string.IsNullOrWhiteSpace(error))

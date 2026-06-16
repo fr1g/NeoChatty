@@ -12,7 +12,7 @@
 <main class="p-6 space-y-6">
     <header>
         <h1 class="text-3xl font-semibold text-slate-950">Backend Settings</h1>
-        <p class="text-slate-500">Edit generated backend config and control the managed backend process.</p>
+        <p class="text-slate-500">Control the backend. Edit the config.</p>
     </header>
 
     @if (!string.IsNullOrWhiteSpace(status))
@@ -40,7 +40,7 @@
                 </div>
                 <div>
                     <dt class="text-slate-500">Health</dt>
-                    <dd class="@(backendStatus.HealthOk ? "text-green-700" : "text-red-700")">@(backendStatus.HealthOk ? "OK" : "Failed")</dd>
+                    <dd class="@(backendStatus is { HealthOk: true, ProcessId: not null } ? "text-green-700" : "text-red-700")">@(backendStatus is { HealthOk: true, ProcessId: not null } ? "OK" : "Failed")</dd>
                 </div>
                 <div>
                     <dt class="text-slate-500">Log</dt>
@@ -58,7 +58,9 @@
                 <pre @ref="logPreElement" class="mt-2 h-72 max-h-72 overflow-auto rounded bg-slate-950 p-3 text-xs text-slate-50 font-mono whitespace-pre-wrap break-all" tabindex="0"><code>@(string.IsNullOrWhiteSpace(consoleLog) ? "No log output yet." : consoleLog)</code></pre>
             </details>
         </section>
-
+        <div class="rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800" role="alert">
+            <strong>Warning:</strong> We're out of fatigue! The configs below are actually not fully tested. Join and help us <a target="_blank" href="https://github.com/fr1g/neochatty">here</a>.
+        </div>
         <EditForm Model="config" OnValidSubmit="SaveAsync" class="panel space-y-5">
             <DataAnnotationsValidator />
             <h2 class="section-title">Backend Runtime</h2>
@@ -93,8 +95,8 @@
                 <span class="mb-1 block text-sm font-medium text-slate-700">Backend environment (KEY=value per line)</span>
                 <InputTextArea name="backendEnvironment" class="form-input min-h-28" @bind-Value="config.BackendEnvironment" />
             </label>
-
-            <h2 class="section-title">Database</h2>
+            <br/>
+            <h2 class="section-title mt-5">Database</h2>
             <div class="form-grid">
                 <label>
                     <span>Database host</span>

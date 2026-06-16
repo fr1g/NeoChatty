@@ -17,6 +17,12 @@
     </ItemGroup>
 
     <ItemGroup>
+      <Content Include="init.sql">
+        <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+      </Content>
+    </ItemGroup>
+
+    <ItemGroup>
       <Content Update="Styles\app.css">
         <ExcludeFromSingleFile>true</ExcludeFromSingleFile>
         <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>

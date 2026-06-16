@@ -11,7 +11,7 @@
 @if (IsAnchor)
 {
     <a
-        class="@CssClass"
+        class="@(UsePresetClass ? CssClass : Class) esc"
         href="@(IsAnchor ? Href : null)"
         target="@(IsAnchor ? Target : null)"
         disabled="@(IsButton ? Disabled : null)"
@@ -24,7 +24,7 @@
 else
 {
     <button
-        class="@CssClass"
+        class="@(UsePresetClass ? CssClass : Class)"
         href="@(IsAnchor ? Href : null)"
         target="@(IsAnchor ? Target : null)"
         disabled="@(IsButton ? Disabled : null)"
@@ -45,6 +45,8 @@ else
 
     [Parameter] public bool Disabled { get; set; }
 
+    [Parameter] public bool UsePresetClass { get; set; } = true;
+
     [Parameter] public EventCallback<MouseEventArgs> OnClick { get; set; }
 
     [Parameter] public RenderFragment? ChildContent { get; set; }
@@ -60,10 +62,7 @@ else
     {
         get
         {
-            var baseClasses = "inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-500 hover:bg-blue-600 active:bg-blue-600/60 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors";
-            
-            if (Disabled)
-                baseClasses += " pointer-events-none opacity-50";
+            var baseClasses = "btn-primary";
             
             if (!string.IsNullOrEmpty(Class))
                 baseClasses += " " + Class;

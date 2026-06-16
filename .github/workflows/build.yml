@@ -113,6 +113,9 @@ jobs:
         with:
           dotnet-version: "10.0.x"
 
+      - name: Copy init.sql into stager project
+        run: cp init.sql ChattyStager/init.sql
+
       - name: Restore NuGet packages
         working-directory: ChattyStager
         run: dotnet restore
@@ -455,39 +458,53 @@ jobs:
           echo "=== Release files ==="
           ls -lh packages/
 
-      - name: Generate release tag name
-        id: tag
+      - name: Generate release metadata
+        id: release_meta
         if: steps.package.outputs.has_artifacts == 'true'
         run: |
+          VERSION=$(cat .VERSION | tr -d '\r\n' | xargs)
           SHORT_SHA=$(echo "${{ github.sha }}" | cut -c1-7)
-          TAG="build-$(date +'%Y%m%d')-${SHORT_SHA}"
+          TAG="${VERSION}-${SHORT_SHA}"
           echo "tag=${TAG}" >> $GITHUB_OUTPUT
           echo "Release tag: ${TAG}"
+
+          # Read commit message from git (avoids expression-escaping issues)
+          COMMIT_MSG=$(git log -1 --pretty=%B)
+          COMMIT_TITLE=$(echo "$COMMIT_MSG" | head -1)
+          # Strip [run-build] prefix
+          CLEAN_TITLE=$(echo "$COMMIT_TITLE" | sed 's/^\[run-build\]\s*//')
+          # Ensure headings in commit message are max h3
+          SAFE_COMMIT_MSG=$(echo "$COMMIT_MSG" | sed 's/^## /### /g; s/^# /### /g')
+
+          cat > release_body.md << 'BODY_EOF'
+Automated build from commit `${{ github.sha }}`
+BODY_EOF
+
+          echo "" >> release_body.md
+          echo "## ${CLEAN_TITLE}" >> release_body.md
+          echo "${SAFE_COMMIT_MSG}" >> release_body.md
+          echo "" >> release_body.md
+          echo "### Results" >> release_body.md
+          echo "- SDK: ${{ needs.build-sdk.result }}" >> release_body.md
+          echo "- WebApp: ${{ needs.build-webapp.result }}" >> release_body.md
+          echo "- ChattyStager: ${{ needs.build-stager.result }}" >> release_body.md
+          echo "- Android APK: ${{ needs.build-app-apk.result }}" >> release_body.md
+          echo "- iOS IPA: ${{ needs.build-app-ipa.result }}" >> release_body.md
+          echo "- Server: ${{ needs.build-server.result }}" >> release_body.md
+          echo "" >> release_body.md
+          echo "### Attached artifacts:" >> release_body.md
+          echo "${{ steps.package.outputs.names }}" >> release_body.md
+          echo "" >> release_body.md
+          echo "> Each artifact is packaged as a single .zip file. The failure of individual builds (e.g. iOS) is acceptable." >> release_body.md
 
       - name: Create GitHub Release
         id: create_release
         if: steps.package.outputs.has_artifacts == 'true'
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ steps.tag.outputs.tag }}
-          name: "Build ${{ steps.tag.outputs.tag }}"
-          body: |
-            Automated build from commit `${{ github.sha }}`
-
-            **Commit message**: ${{ github.event.head_commit.message }}
-
-            ### Build Results:
-            - SDK: ${{ needs.build-sdk.result }}
-            - WebApp: ${{ needs.build-webapp.result }}
-            - ChattyStager: ${{ needs.build-stager.result }}
-            - Android APK: ${{ needs.build-app-apk.result }}
-            - iOS IPA: ${{ needs.build-app-ipa.result }}
-            - Server: ${{ needs.build-server.result }}
-
-            ### Attached artifacts:
-            ${{ steps.package.outputs.names }}
-
-            > Each artifact is packaged as a single .zip file. The failure of individual builds (e.g. iOS) is acceptable.
+          tag_name: ${{ steps.release_meta.outputs.tag }}
+          name: "Build ${{ steps.release_meta.outputs.tag }}"
+          body_path: release_body.md
           files: |
             packages/*
           draft: false

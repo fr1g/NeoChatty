@@ -17,7 +17,7 @@
         </header>
 
         <nav aria-label="Progress" class="rounded-md bg-white p-3 shadow-sm">
-            <ol class="grid grid-cols-2 gap-2 text-sm md:grid-cols-5">
+            <ol class="grid grid-cols-2 gap-2 text-sm md:grid-cols-6">
                 @foreach (var item in steps.Select((label, index) => (label, index)))
                 {
                     <li class="rounded px-3 py-2 @(Step == item.index ? "bg-blue-600 text-white" : item.index < Step ? "bg-blue-50 text-blue-700" : "bg-slate-100 text-slate-500")">
@@ -42,13 +42,13 @@
 
         <footer class="flex justify-between">
             <button type="button" class="btn-secondary" @onclick="PrevStep" disabled="@(Step == 0 || busy)">Previous</button>
-            <button type="button" class="btn-primary" @onclick="NextStep" disabled="@(!CanMoveNext || busy)">@(Step == steps.Length - 1 ? "Open Dashboard" : "Next")</button>
+            <button type="button" class="btn-primary" @onclick="NextStepAsync" disabled="@(!CanMoveNext || busy)">@(Step == steps.Length - 1 ? "Open Dashboard" : "Next")</button>
         </footer>
     </div>
 </main>
 
 @code {
-    private readonly string[] steps = ["Runtime", "Database", "Artifacts", "Backend Config", "Finish"];
+    private readonly string[] steps = ["Passkey", "Runtime", "Database", "Artifacts", "Backend Config", "Finish"];
     private StagerConfig config = new();
     private RuntimeCheckResult? runtime;
     private DeploymentResult? databaseResult;
@@ -58,13 +58,16 @@
     private bool busy;
     private string status = "";
     private string error = "";
+    private string? configPassKeyConfirm;
+    private string? passKeyError;
     private string sqlPath = "";
 
     private bool CanMoveNext => Step switch
     {
-        0 => runtime?.IsReady == true,
-        1 => databaseResult?.Success == true,
-        2 => backendDeployResult?.Success == true && webDeployResult?.Success == true,
+        0 => !string.IsNullOrWhiteSpace(config.PassKey),
+        1 => runtime?.IsReady == true,
+        2 => databaseResult?.Success == true,
+        3 => backendDeployResult?.Success == true && webDeployResult?.Success == true,
         _ => true,
     };
 
@@ -80,6 +83,26 @@
         return Step switch
         {
             0 => @<div class="space-y-5">
+                <h2 class="section-title">Set Stager Passkey</h2>
+                <p class="text-sm text-slate-500">This passkey protects the stager panel. You will need it to access any management page after setup.</p>
+                <div class="form-grid">
+                    <label>
+                        <span>Passkey</span>
+                        <InputText name="passKey" type="password" autocomplete="new-password" class="form-input"
+                                   @bind-Value="config.PassKey" />
+                    </label>
+                    <label>
+                        <span>Confirm Passkey</span>
+                        <InputText name="passKeyConfirm" type="password" autocomplete="new-password" class="form-input"
+                                   @bind-Value="configPassKeyConfirm" />
+                    </label>
+                </div>
+                @if (!string.IsNullOrWhiteSpace(passKeyError))
+                {
+                    <p class="text-sm text-red-600">@passKeyError</p>
+                }
+            </div>,
+            1 => @<div class="space-y-5">
                 <div>
                     <h2 class="section-title">Runtime Checks</h2>
                     <p class="text-sm text-slate-500">Node.js 22 or newer and a supported database client must pass before setup. Database connection is tested during initialization.</p>
@@ -90,7 +113,7 @@
                 </div>
                 <button type="button" class="btn-secondary" @onclick="RunChecksAsync" disabled="@busy">Run Checks</button>
             </div>,
-            1 => @<EditForm Model="config" OnValidSubmit="InitializeDatabaseAsync" class="space-y-5">
+            2 => @<EditForm Model="config" OnValidSubmit="InitializeDatabaseAsync" class="space-y-5">
                 <DataAnnotationsValidator />
                 <h2 class="section-title">Database Initialization</h2>
                 <div class="form-grid">
@@ -115,16 +138,16 @@
                         <InputText name="mysqlPassword" type="password" autocomplete="current-password" class="form-input" @bind-Value="config.MySqlPassword" />
                     </label>
                     <label>
-                        <span>SQL init file</span>
+                        <span>SQL init file [don't change if you don't know]</span>
                         <InputText name="sqlPath" class="form-input" @bind-Value="sqlPath" />
                     </label>
                 </div>
                 <button type="submit" class="btn-primary" disabled="@busy">Initialize and Validate Database</button>
                 @RenderDeploymentResult(databaseResult)
             </EditForm>,
-            2 => @<div class="space-y-5">
-                <h2 class="section-title">GitHub Actions Artifacts</h2>
-                <p class="text-sm text-slate-500">Downloads release assets from the latest public release at <code>@GitHubArtifactConstants.RepositoryReleasesUrl</code>.</p>
+            3 => @<div class="space-y-5">
+                <h2 class="section-title">Artifacts</h2>
+                <p class="text-sm text-slate-500">Download a deployable artifact from <code>@GitHubArtifactConstants.RepositoryReleasesUrl</code>.</p>
                 <dl class="grid grid-cols-1 gap-3 rounded-md border border-slate-200 bg-slate-50 p-4 text-sm md:grid-cols-2">
                     <div>
                         <dt class="text-slate-500">Server artifact</dt>
@@ -136,12 +159,13 @@
                     </div>
                 </dl>
                 <button type="button" class="btn-primary" @onclick="DeployArtifactsAsync" disabled="@busy">Download and Deploy Latest Build</button>
+                <p class="@(busy ? "text-slate-500" : "hidden")">Stager is processing the work...</p>
                 <div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
                     @RenderDeploymentResult(backendDeployResult)
                     @RenderDeploymentResult(webDeployResult)
                 </div>
             </div>,
-            3 => @<EditForm Model="config" OnValidSubmit="SaveBackendConfigAsync" class="space-y-5">
+            4 => @<EditForm Model="config" OnValidSubmit="SaveBackendConfigAsync" class="space-y-5">
                 <h2 class="section-title">Backend Config</h2>
                 <div class="rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800" role="alert">
                     <strong>Warning:</strong> If you don&apos;t know what these are, do not change these settings.
@@ -176,7 +200,9 @@
             </EditForm>,
             _ => @<div class="space-y-5">
                 <h2 class="section-title">Ready</h2>
-                <p class="text-slate-600">Setup completed. Use Settings to start the backend and Manage Users to call ban/unban procedures.</p>
+                <p class="text-slate-600">Setup completed. Use Settings to start the backend and Manage Users.</p>
+                <p class="text-slate-600">Be adviced: you're the deployer of chatty, please obey the Chatty Deployer Guidance. Never remove your user without agreement; never hide crimes; never abuse.</p>
+                <p class="text-slate-600">You may use nginx to traffic the backend, and enable HTTPS on that, meanwhile block direct access to the kestrel server (THIS chatty host)</p>
                 <button type="button" class="btn-primary" @onclick="CompleteSetupAsync" disabled="@busy">Finish Setup</button>
             </div>,
         };
@@ -286,8 +312,24 @@
         error = "";
     }
 
-    private void NextStep()
+    private async Task NextStepAsync()
     {
+        if (Step == 0)
+        {
+            passKeyError = null;
+            if (string.IsNullOrWhiteSpace(config.PassKey))
+            {
+                passKeyError = "Passkey cannot be empty.";
+                return;
+            }
+            if (config.PassKey != configPassKeyConfirm)
+            {
+                passKeyError = "Passkeys do not match.";
+                return;
+            }
+            await ConfigService.SaveAsync(config);
+        }
+
         if (Step == steps.Length - 1)
         {
             NavigationManager.NavigateTo("/stager/");
@@ -321,9 +363,9 @@
     {
         var candidates = new[]
         {
+            Path.GetFullPath("init.sql"),
             Path.GetFullPath(Path.Combine(Directory.GetCurrentDirectory(), "..", "init.sql")),
             Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "init.sql")),
-            Path.GetFullPath("init.sql"),
         };
 
         return candidates.FirstOrDefault(File.Exists) ?? candidates[0];
