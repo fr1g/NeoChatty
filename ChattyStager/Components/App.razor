@@ -20,19 +20,11 @@
 <script src="@Assets["_framework/blazor.web.js"]"></script>
 <script>
 (function () {
-    // --- Navigation progress bar ---
     const bar = document.querySelector('.navigation-progress');
-    if (bar) {
-        const navContainer = document.querySelector('aside.p-4');
-        if (navContainer) {
-            navContainer.addEventListener('click', function (e) {
-                const link = e.target.closest('a');
-                if (link && bar) {
-                    bar.classList.remove('navigation-progress--done');
-                }
-            });
-        }
-    }
+
+    window.showNavigationProgress = function () {
+        if (bar) bar.classList.remove('navigation-progress--done');
+    };
 
     window.hideNavigationProgress = function () {
         if (bar) bar.classList.add('navigation-progress--done');

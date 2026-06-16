@@ -49,7 +49,9 @@ app.MapWhen(ctx => ctx.Request.Path.StartsWithSegments("/stager"), stagerBranch 
 {
     var configService = stagerBranch.ApplicationServices.GetRequiredService<StagerConfigService>();
 
-    // --- Login endpoint must run before auth middleware ---
+    stagerBranch.UsePathBase("/stager");
+
+    // --- Login endpoint (POST, must run before auth middleware) ---
     stagerBranch.MapWhen(ctx =>
         ctx.Request.Method == "POST" &&
         (ctx.Request.Path.Value?.EndsWith("/login", StringComparison.OrdinalIgnoreCase) == true),
@@ -123,10 +125,9 @@ app.MapWhen(ctx => ctx.Request.Path.StartsWithSegments("/stager"), stagerBranch 
             return;
         }
 
-        var isProtected = protectedRoutes.Any(r =>
-        {
-            return normalized.EndsWith(r, StringComparison.OrdinalIgnoreCase) || normalized == "/stager/" || normalized == "/stager";
-        });
+        // Path is already stripped of /stager by UsePathBase
+        var isProtected = protectedRoutes.Any(r => normalized.EndsWith(r, StringComparison.OrdinalIgnoreCase))
+                          || normalized == "/" || normalized == "";
         if ((!isProtected) || (ctx.Request.Cookies.TryGetValue("stager_auth", out var cookieValue) &&
                                TryValidateAuthCookie(cookieValue)))
         {
@@ -141,7 +142,6 @@ app.MapWhen(ctx => ctx.Request.Path.StartsWithSegments("/stager"), stagerBranch 
             ctx.Response.Redirect("/stager/Login");
     });
 
-    stagerBranch.UsePathBase("/stager");
     stagerBranch.UseStaticFiles();
     stagerBranch.UseRouting();
     stagerBranch.UseAntiforgery();

@@ -30,13 +30,22 @@
     protected override void OnInitialized()
     {
         isInSetupRoute = NavigationManager.Uri.Contains("/Setup");
+
+        NavigationManager.LocationChanged += (_, _) =>
+        {
+            _ = ShowNavigationProgressAsync();
+        };
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        // Navigation completed — hide the JS-driven progress bar.
         isInSetupRoute = NavigationManager.Uri.Contains("/Setup");
         await JS.InvokeVoidAsync("hideNavigationProgress");
+    }
+
+    private async Task ShowNavigationProgressAsync()
+    {
+        await JS.InvokeVoidAsync("showNavigationProgress");
     }
 }
 
