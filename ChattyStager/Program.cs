@@ -147,7 +147,7 @@ app.MapWhen(ctx => ctx.Request.Path.StartsWithSegments("/stager"), stagerBranch 
 
     stagerBranch.UseEndpoints(endpoints =>
     {
-
+        endpoints.MapStaticAssets();
         endpoints.MapRazorComponents<App>()
             .AddInteractiveServerRenderMode();
     });
