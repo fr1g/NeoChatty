@@ -13,6 +13,8 @@ import {
     Keyboard,
     ScrollView,
     RefreshControl,
+    KeyboardAvoidingView,
+    Platform,
 } from 'react-native';
 import { friends, files } from '../../api';
 import { User } from '../../types';
@@ -420,7 +422,11 @@ export default function AddCodeScreen() {
     // Main render
 
     return (
-        <View style={styles.container}>
+        <KeyboardAvoidingView
+            style={styles.container}
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
+        >
             {/* Upper: Code & Search (natural height) */}
             <ScrollView
                 style={styles.upperHalf}
@@ -742,7 +748,7 @@ export default function AddCodeScreen() {
                     </View>
                 </View>
             </Modal>
-        </View>
+        </KeyboardAvoidingView>
     );
 }
 

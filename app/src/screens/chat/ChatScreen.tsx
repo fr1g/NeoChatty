@@ -445,7 +445,7 @@ const ChatScreen: React.FC = () => {
             </TouchableOpacity>
         </View>);
     };
-    return (<KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : undefined} keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}>
+    return (<KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : 'height'} keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}>
         {initialLoad && (<View style={styles.initialLoading}>
             <ActivityIndicator size="large" color="#1277d6" />
         </View>)}

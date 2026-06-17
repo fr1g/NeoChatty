@@ -17,6 +17,7 @@ export async function connect(): Promise<Socket> {
     isFirstConnect = true;
     socket = io(socketUrl, {
         auth: { token },
+        path: '/chathub/socket.io',
         reconnection: true,
         reconnectionDelay: 1000,
         reconnectionDelayMax: 30000,
