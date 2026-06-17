@@ -104,7 +104,7 @@ export default function UserSearchScreen() {
         <KeyboardAvoidingView
             style={styles.container}
             behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-            keyboardVerticalOffset={Platform.OS === 'ios' ? 88 : 0}
+            keyboardVerticalOffset={Platform.OS === 'ios' ? 88 : 80}
         >
             <View style={styles.headerArea}>
                 <View style={styles.searchBar}>
