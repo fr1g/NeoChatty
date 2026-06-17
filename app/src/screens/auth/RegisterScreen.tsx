@@ -44,7 +44,7 @@ const RegisterScreen: React.FC = () => {
         catch (e: any) {
             const msg = e?.response?.data?.error?.message || e?.message || 'Please try again later';
             Alert.alert('Sign Up Failed', msg);
-            console.log(e, JSON.stringify(e ?? null));
+            // console.log(e, JSON.stringify(e ?? null));
         }
         finally {
             setLoading(false);

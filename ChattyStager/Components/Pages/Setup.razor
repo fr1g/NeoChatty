@@ -302,7 +302,7 @@
         {
             config.IsSetUp = true;
             await ConfigService.SaveAsync(config);
-            NavigationManager.NavigateTo("/stager/");
+            NavigationManager.NavigateTo("/stager/Dashboard");
         });
     }
 
@@ -332,7 +332,7 @@
 
         if (Step == steps.Length - 1)
         {
-            NavigationManager.NavigateTo("/stager/");
+            NavigationManager.NavigateTo("/stager/Dashboard");
             return;
         }
 

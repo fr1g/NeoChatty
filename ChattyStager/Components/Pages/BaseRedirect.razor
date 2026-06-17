@@ -1,0 +1,10 @@
+@page "/"
+@rendermode InteractiveServer
+@inject NavigationManager NavigationManager
+
+@code {
+    protected override void OnInitialized()
+    {
+        NavigationManager.NavigateTo("/stager/Dashboard");
+    } 
+}

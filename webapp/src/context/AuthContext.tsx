@@ -55,7 +55,7 @@ export function AuthProvider({ children }: {
     }, []);
     useEffect(() => {
         (async () => {
-            console.log(`cfg`, client?.config ?? null, client ?? null)
+            // console.log(`cfg`, client?.config ?? null, client ?? null)
             try {
                 const tokens = getTokens();
                 if (tokens.accessToken || t.accessToken) {

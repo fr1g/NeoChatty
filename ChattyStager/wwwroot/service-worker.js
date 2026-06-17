@@ -47,6 +47,10 @@ function shouldCache(url) {
 self.addEventListener('fetch', (event) => {
     const url = new URL(event.request.url);
 
+    // Never intercept /stager requests — they belong to ChattyStager, not webapp.
+    if (url.pathname.startsWith('/stager'))
+        return;
+
     if (shouldCache(url)) {
         event.respondWith(
             caches.open(VERSION).then((cache) => {

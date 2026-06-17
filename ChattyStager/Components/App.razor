@@ -20,13 +20,13 @@
 <script src="@Assets["_framework/blazor.web.js"]"></script>
 <script>
 (function () {
-    const bar = document.querySelector('.navigation-progress');
-
     window.showNavigationProgress = function () {
+        const bar = document.querySelector('.navigation-progress');
         if (bar) bar.classList.remove('navigation-progress--done');
     };
 
     window.hideNavigationProgress = function () {
+        const bar = document.querySelector('.navigation-progress');
         if (bar) bar.classList.add('navigation-progress--done');
     };
 
@@ -34,6 +34,13 @@
     window.scrollElementToBottom = function (el) {
         if (el) el.scrollTop = el.scrollHeight;
     };
+
+    // --- NavLink click → show progress (native, bypasses Blazor lifecycle) ---
+    document.addEventListener('click', function (e) {
+        if (e.target.closest('.nav-link')) {
+            window.showNavigationProgress();
+        }
+    });
 })();
 </script>
 </body>

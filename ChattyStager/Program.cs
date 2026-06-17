@@ -4,7 +4,7 @@ using ChattyStager.Helpers;
 using ChattyStager.Services;
 using TailwindBlazor;
 
-string[] protectedRoutes = ["/", "/Setup", "/Settings", "/ManageUser", "/Error", "/not-found", "/Lock"];
+string[] protectedRoutes = ["/Dashboard", "/Setup", "/Settings", "/ManageUser", "/Error", "/not-found", "/Lock"];
 
 AppSettingsHelper.AppSettingsCheck();
 Environment.SetEnvironmentVariable("DOTNET_hostBuilder__reloadConfigOnChange", "false");
@@ -81,7 +81,7 @@ app.MapWhen(ctx => ctx.Request.Path.StartsWithSegments("/stager"), stagerBranch 
                     Path = "/stager",
                 });
 
-            ctx.Response.Redirect("/stager/");
+            ctx.Response.Redirect("/stager/Dashboard");
         });
     });
 
@@ -126,8 +126,7 @@ app.MapWhen(ctx => ctx.Request.Path.StartsWithSegments("/stager"), stagerBranch 
         }
 
         // Path is already stripped of /stager by UsePathBase
-        var isProtected = protectedRoutes.Any(r => normalized.EndsWith(r, StringComparison.OrdinalIgnoreCase))
-                          || normalized == "/" || normalized == "";
+        var isProtected = protectedRoutes.Any(r => normalized.EndsWith(r, StringComparison.OrdinalIgnoreCase));
         if ((!isProtected) || (ctx.Request.Cookies.TryGetValue("stager_auth", out var cookieValue) &&
                                TryValidateAuthCookie(cookieValue)))
         {
