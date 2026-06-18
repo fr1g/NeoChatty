@@ -1,3 +1,5 @@
+*ВКР Х. Чэнь*
+
 # Chatty (NeoChatty)
 Chatty but brand new. Inherited from previous project [ZenChatty](https://github.com/fr1g/zenchatty)
 ## Overview
