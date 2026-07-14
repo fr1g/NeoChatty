@@ -2,6 +2,7 @@
 
 -----
 notice: yes i do want this project continuable but this repo is only for VKR (which is, the final project in russian university). make a fork to continue this. (whoever wants)
+
 -----
 
 # Chatty (NeoChatty)
